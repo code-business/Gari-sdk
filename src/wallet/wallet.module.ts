@@ -10,6 +10,7 @@ import { SolanaService } from './solana/solana.service';
   imports: [TypeOrmModule.forFeature(
     [
       RegisterWallet,
+      Transaction,
       HttpModule
     ]
   )],

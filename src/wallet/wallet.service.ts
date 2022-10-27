@@ -24,10 +24,10 @@ const crypto = require('crypto');
 @Injectable()
 export class WalletService {
   constructor(
-    @Inject(RegisterWallet) 
+    @InjectRepository(RegisterWallet) 
     private registerWalletRepository: Repository<RegisterWallet>,
 
-    @Inject(Transaction) 
+    @InjectRepository(Transaction) 
     private transactions: Repository<Transaction>
   ) {}
   // constructor(
