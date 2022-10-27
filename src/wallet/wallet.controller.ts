@@ -11,7 +11,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { SolanaService } from './solana/solana.service';
 import { ETransactionStatus } from 'src/common/enum/status.enum';
-import { SendAirdrop } from './dto/AppWallet.dto';
+import { EncodedTransactionDTO, SendAirdrop } from './dto/AppWallet.dto';
  
 @ApiTags('Appwallet')
 @Controller('Appwallet')
@@ -151,5 +151,32 @@ export class WalletController {
       data: data,
     };
   }
+  
+  @Post('getEncodedTransaction')
+  async getEncodedTransaction(@Body() body: EncodedTransactionDTO) {
+    try {
+      // const { publicKey } = body;
+      let userId = 'akshay';
+      let APP_PUBLIC_KEY = 'HxnzKXSCR7CZ37qGzM1pWmuPcwwJXGdNph34yH2mpgm7';
+      let APP_ASSOC_ACCOUNT = 'FpDS4vzViuPBSxdMTaZREKXNZ1BF8Lsj47TAmDG1Kj4g';
+      let coins = 1234;
+      let comission = 10;
+
+      const senderWallet = await this.walletService.findOne(userId);
+
+      const encodedTransaction =
+        await this.walletService.getEncodedTransaction(
+          senderWallet,
+          APP_ASSOC_ACCOUNT,
+          APP_PUBLIC_KEY,
+          coins,
+          comission,
+        );
+      return encodedTransaction.toString('base64');
+    } catch (error) {
+      console.log('error', error);
+    }
+  }
+
   
 }

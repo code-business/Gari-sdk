@@ -45,7 +45,11 @@ export class WalletService {
     private registerWalletRepository: Repository<RegisterWallet>,
 
     @InjectRepository(Transaction) 
-    private transactions: Repository<Transaction>
+    private transactions: Repository<Transaction>,
+
+    @InjectRepository(Wallet) 
+    private wallet: Repository<Wallet>
+
   ) {
     
     this.ASSOCIATED_TOKEN_PROGRAM_ID = new web3.PublicKey(
@@ -176,5 +180,68 @@ export class WalletService {
 
     return signature;
   }
+
+  async findOne(userId) {
+    return await this.wallet.findOne( userId );
+  }
+
+  async getEncodedTransaction(
+    senderWallet,
+    receiverPubkeyAta,
+    receiverPublicKey,
+    coins,
+    comission,
+  ) {
+    const instructions = [];
+    console.log('senderWallet', senderWallet);
+    //if external transaction WITHOUT_ASSOCIATED_ACCOUNT
+
+    //transfer instruction
+    instructions.push(
+      splToken.Token.createTransferInstruction(
+        this.programId,
+        new web3.PublicKey(senderWallet.tokenAssociatedAccount),
+        new web3.PublicKey(receiverPubkeyAta), //associatedAddress,
+        new web3.PublicKey(senderWallet.publicKey),
+        [],
+        coins,
+      ),
+    );
+    console.log('instruction', instructions);
+    //commission instruction
+    instructions.push(
+      splToken.Token.createTransferInstruction(
+        this.programId,
+        new web3.PublicKey(senderWallet.tokenAssociatedAccount),
+        this.chingariAccountsPublickey,
+        new web3.PublicKey(senderWallet.publicKey),
+        [],
+        comission,
+      ),
+    );
+
+    // instructions.push(
+    //   new web3.TransactionInstruction({
+    //     keys: [],
+    //     programId: new web3.PublicKey(process.env.MEMO_PROGRAM_ID),
+    //     data: Buffer.from(memo, 'utf8'),
+    //   }),
+    // );
+
+    const transaction = new web3.Transaction({
+      feePayer: new web3.PublicKey(process.env.GARI_PUBLIC_KEY),
+    }).add(...instructions);
+
+    let blockhashObj = await this.connection.getRecentBlockhash();
+    transaction.recentBlockhash = blockhashObj.blockhash;
+
+    let encodedTransaction = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false,
+    });
+
+    return encodedTransaction;
+  }
+
 
 }
