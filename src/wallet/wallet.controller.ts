@@ -3,20 +3,20 @@ import {
   Get,
   Post,
   Body,
+  Req,
 } from '@nestjs/common';
 import { WalletService } from './wallet.service';
 import { RegisterAppWalletDto } from './dto/RegisterAppWalletDto,dto';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-
-
-import { keyBy, filter, get } from 'lodash';
+import { CreateWalletDto } from './dto/create-wallet.dto';
+import { SolanaService } from './solana/solana.service';
+import { ETransactionStatus } from 'src/common/enum/status.enum';
 
 @Controller('app-wallet')
 export class WalletController {
   constructor(
     private readonly walletService: WalletService,
-    // private readonly solanaNftService: SolanaNftService,
-    // @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+    private readonly solanaService: SolanaService,
   ) {}
 
   @ApiTags('app-wallet')
@@ -35,20 +35,74 @@ export class WalletController {
         data: wallet,
       };
     } catch (error) {
-      // this.logger.error(
-      //   JSON.stringify({
-      //     method: 'registerWallet',
-      //     custom: 'register wallet final error',
-      //   }),
-      // );
-      // this.logger.error(
-      //   JSON.stringify({ method: 'registerWallet', error: `${error}` }),
-      // );
       return {
         code: 400,
         error: error.message,
         message: 'Error',
       };
+    }
+  }
+  
+  @Post('create')
+  async createWallet(@Body() body:CreateWalletDto, @Req() req) {
+    try {
+      const userId = req.decoded._id;
+      const { publicKey } = body;
+
+      const associatedAccount =
+        await this.solanaService.createAssociatedAccount(publicKey);
+      
+        let gariLamports = 1;
+
+        //  this is just for testing
+        if (process.env.ENVIRONMENT != 'PRODUCTION') {
+          gariLamports = 1000000;
+        }
+      
+      const walletData = {
+        publicKey,
+        userId,
+        tokenAssociatedAccountpublickey: associatedAccount.toString(),
+        balance: 0,
+      }
+
+      const draftTransaction = await this.walletService.walletDbTRansaction(walletData,
+        {
+          fromUserId: "",
+          toUserId: userId,
+          status: ETransactionStatus.DRAFT,
+          fromPublicKey: process.env.GARI_PUBLIC_KEY,
+          toPublicKey: publicKey,
+          coins: gariLamports,
+          chinagriCommission: 0,
+          solanaFeeInLamports: 0,
+          totalTransactionAmount: gariLamports,
+       });
+
+      const signature = await this.solanaService.assocaiatedAccountTransaction(associatedAccount, publicKey)
+        .catch(async (error) => {
+          this.walletService.deleteWallet({
+            userId,
+          })
+
+          console.log("Create Wallet Failed");
+          throw new Error('Create Wallet Failed');
+          
+        })  
+      
+        await this.walletService.updateTransctions(
+          {
+            id: draftTransaction.id,
+          },
+          {
+            status: ETransactionStatus.PENDING,
+            signature: signature,
+          },
+        );
+
+    } catch (error) {
+      console.log(error);
+      
     }
   }
 

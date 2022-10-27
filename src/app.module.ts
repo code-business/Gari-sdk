@@ -8,8 +8,6 @@ import constants from './constants';
 import { WalletModule } from './wallet/wallet.module';
 import { AuthModule } from './auth/auth.module';
 
-console.log('constants -- ', constants);
-
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -22,7 +20,7 @@ console.log('constants -- ', constants);
       username: 'postgres',
       password: constants.DB_LOCAL_PASSWORD,
       database: constants.DB_LOCAL_DATABASE,
-      entities: [RegisterWallet],
+      entities: [RegisterWallet ],
       synchronize: true,
     }),
     WalletModule,

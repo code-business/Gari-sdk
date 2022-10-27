@@ -16,14 +16,20 @@ import {
 } from 'typeorm';
 import {InjectRepository} from '@nestjs/typeorm'
 import { RegisterWallet } from './entities/registerWallet.entity';
+import { Wallet } from './entities/wallet.entity';
+import { Transaction } from "./entities/transaction.entity";
 // import { transactions } from 'src/wallet/entity/transactions.entity';
 
 const crypto = require('crypto');
 @Injectable()
 export class WalletService {
   constructor(
-    @InjectRepository(RegisterWallet) 
-    private registerWalletRepository: Repository<RegisterWallet>) {}
+    @Inject(RegisterWallet) 
+    private registerWalletRepository: Repository<RegisterWallet>,
+
+    @Inject(Transaction) 
+    private transactions: Repository<Transaction>
+  ) {}
   // constructor(
   //   @Inject('REGISTER_WALLET_REPOSITORY')
   //   private registerWalletRepository: Repository<RegisterWallet>,
@@ -37,6 +43,36 @@ export class WalletService {
       encryptedPrivateKey,
     });
     return data;
+  }
+
+  async walletDbTRansaction(walletData, data: object) {
+    const connection = getConnection();
+    const queryRunner = connection.createQueryRunner();
+    // establish real database connection using our new query runner
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    let transactionResponse;
+    try {
+      await queryRunner.manager.save(Wallet, { ...walletData });
+
+      transactionResponse = await queryRunner.manager.save(Transaction, {
+        ...data,
+      });
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+    return transactionResponse;
+  }
+
+  async deleteWallet(request) {
+    return await this.registerWalletRepository.delete(request);
+  }
+
+  updateTransctions(filter, request) {
+    return this.transactions.update({ ...filter }, request);
   }
 
   // async connectWallet(wallet) {
