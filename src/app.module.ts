@@ -5,6 +5,8 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import constants from './constants';
+import { WalletModule } from './wallet/wallet.module';
+import { AuthModule } from './auth/auth.module';
 
 console.log('constants -- ', constants);
 
@@ -23,6 +25,8 @@ console.log('constants -- ', constants);
       entities: [RegisterWallet],
       synchronize: true,
     }),
+    WalletModule,
+    AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],
