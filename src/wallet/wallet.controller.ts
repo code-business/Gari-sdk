@@ -4,15 +4,17 @@ import {
   Post,
   Body,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { WalletService } from './wallet.service';
 import { RegisterAppWalletDto } from './dto/RegisterAppWalletDto,dto';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { SolanaService } from './solana/solana.service';
-import { ETransactionStatus } from 'src/common/enum/status.enum';
-import { EncodedTransactionDTO, SendAirdrop } from './dto/AppWallet.dto';
- 
+import { ETransactionCase, ETransactionStatus } from 'src/common/enum/status.enum';
+import { BuyAppDto, EncodedTransactionDTO, SendAirdrop } from './dto/AppWallet.dto';
+import { keyBy, filter, get } from 'lodash';
+import { amountFromBuffer } from 'src/util/amountTobuffer';
 @ApiTags('Appwallet')
 @Controller('Appwallet')
 export class WalletController {
@@ -178,5 +180,148 @@ export class WalletController {
     }
   }
 
-  
+  @Post('decodeEncodedTransaction')
+  async decodeEncodedTransaction(@Body() body: BuyAppDto, @Req() req) {
+    try {
+      // let userId = req.decoded._id;
+      const { encodedTransaction } = body;
+      const decodedTransction =
+        this.walletService.getDecodedTransction1(encodedTransaction);
+      // console.log('decodedTransction=>', decodedTransction);
+      //  console.log(decodedTransction.instructions.length)get
+      let senderWalletPublicKey = get(
+        filter(decodedTransction.instructions[0].keys, function (elt) {
+          // console.log(
+          //   'elt',
+          //   elt.isSigner,
+          //   elt.isWritable,
+          //   elt.pubkey.toString(),
+          // );
+          return (
+            elt.isSigner &&
+            !elt.isWritable &&
+            elt.pubkey.toString() != process.env.GARI_ASSOCIATED_ACCOUNT
+          );
+        }),
+        '[0].pubkey',
+        undefined,
+      );
+      console.log('senderWalletPublicKey', senderWalletPublicKey.toString());
+
+      if (!senderWalletPublicKey) {
+        throw new BadRequestException('Invalid sender Wallet details');
+      }
+
+      let receiverWalletAssociatedPublickey = get(
+        filter(decodedTransction.instructions[0].keys, function (elt) {
+          // console.log(
+          //   'elt',
+          //   elt.isSigner,
+          //   elt.isWritable,
+          //   elt.pubkey.toString(),
+          // );
+          return (
+            !elt.isSigner &&
+            elt.isWritable &&
+            elt.pubkey.toString() != senderWalletPublicKey
+          );
+        }),
+        '[0].pubkey',
+        undefined,
+      );
+      console.log(
+        'receiverWalletAssociatedPublickey',
+        receiverWalletAssociatedPublickey.toString(),
+      );
+
+      if (!receiverWalletAssociatedPublickey) {
+        throw new BadRequestException('Invalid receiver Wallet details');
+      }
+
+      const walletData = await this.walletService.find({
+        tokenAssociatedAccount: receiverWalletAssociatedPublickey.toString(),
+      });
+
+      if (!walletData) {
+        return {
+          code: 404,
+          error: null,
+          message: 'Receiver Wallet  not found',
+        };
+      }
+
+      // const memo = get(decodedTransction, 'instructions[0].data', undefined);
+      const amountBuffer = get(
+        decodedTransction,
+        'instructions[1].data',
+        undefined,
+      );
+      const amount = amountFromBuffer(amountBuffer);
+
+      if (!amountBuffer) {
+        throw new Error('Amount is required.');
+      }
+
+      // const memoDecrypt = JSON.parse(decryptTextAES(memo.toString()));
+      // if (get(memoDecrypt, 'type', undefined) != 'nft_reward_transfer') {
+      //   throw new Error('Invalid transactions');
+      // }
+      // console.log('memoDecrypt', memoDecrypt);
+      let transaction: any = {
+        status: ETransactionStatus.DRAFT,
+        case: ETransactionCase.AIRDROP,
+        coins: amount,
+        totalTransactionAmount: amount,
+        fromPublicKey: senderWalletPublicKey.toString(),
+        toPublicKey: receiverWalletAssociatedPublickey.toString(),
+        fromUserId: 'chingari',
+        toUserId: walletData[0].userId,
+        chinagriCommission: 0,
+        // meta: memoDecrypt,
+      };
+      console.log('transaction', transaction);
+
+      await this.walletService.saveTransaction(transaction);
+
+      const signature = await this.walletService
+        .sendNft(decodedTransction)
+        .catch(async (error) => {
+          // await this.walletService.deleteAndUpdateWalletbalance(
+          //   pendingTransactionData.id,
+          //   undefined,
+          //   undefined,
+          //   undefined,
+          //   pendingTransactionData,
+          // );
+          throw new Error(error);
+        });
+      console.log('signature=>', signature);
+
+      // await this.walletService.updateTransctions(
+      //   {
+      //     id: pendingTransactionData.id,
+      //   },
+      //   {
+      //     status: ETransactionStatus.PENDING,
+      //     signature: signature,
+      //   },
+      // );
+      const data = {
+        transactionSignature: signature,
+      };
+
+      return {
+        code: 200,
+        error: null,
+        message: 'success',
+        data,
+      };
+    } catch (error) {
+      return {
+        code: 400,
+        error: error.message,
+        message: 'Error',
+      };
+    }
+  }
 }

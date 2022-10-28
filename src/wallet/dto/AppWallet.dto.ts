@@ -59,3 +59,13 @@ export class EncodedTransactionDTO {
   })
   amount: number;
 }
+export class BuyAppDto {
+  @IsNotEmpty()
+  @ApiProperty({
+    description: 'encoded transactions',
+    example:
+      'EJ3FktdZhsNbDMamvSygi2wLfjBgisWzF1iNecdckQVmsdgEJ3FktdZhsNbDMamvSygi2wLfjBgisWzF1iNecdckQVm',
+    required: true,
+  })
+  encodedTransaction: String;
+}

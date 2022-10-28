@@ -7,4 +7,5 @@ export enum ETransactionStatus {
   
 export enum ETransactionCase { 
     ASSOCIATEDACCOUNT = 'associatedAccount',
+    AIRDROP = 'airdrop'
 }

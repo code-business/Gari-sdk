@@ -36,9 +36,9 @@ export class WalletService {
 
   private myMint;
 
-  private myToken;
-
   private ASSOCIATED_TOKEN_PROGRAM_ID;
+
+  private connection1 = new web3.Connection(this.SOLANA_API, 'confirmed');
 
   constructor(
     @InjectRepository(RegisterWallet) 
@@ -52,6 +52,7 @@ export class WalletService {
 
   ) {
     
+    
     this.ASSOCIATED_TOKEN_PROGRAM_ID = new web3.PublicKey(
       process.env.GARI_ASSOCIATED_TOKEN_PROGRAM_ID,
     );
@@ -60,8 +61,12 @@ export class WalletService {
 
     this.myMint = new web3.PublicKey(process.env.GARI_TOKEN_ADDRESS);
 
+    this.AIRDROP_FEEPAYER_PRIVATE_KEY = new Uint8Array(
+      process.env.AIRDROP_FEEPAYER_PRIVATE_KEY.split(',').map((e: any) => e * 1),
+    );
+
     this.chingariWallet = web3.Keypair.fromSecretKey(
-      this.AIRDROP_FEEPAYER_PRIVATE_KEY,
+    this.AIRDROP_FEEPAYER_PRIVATE_KEY,
     );
 
     this.chingariAccountsPublickey = new web3.PublicKey(
@@ -242,6 +247,90 @@ export class WalletService {
 
     return encodedTransaction;
   }
+  
+  async find(req) {
+    return await this.wallet.find(req);
+  }
+  
+  async saveTransaction(data: any) {
+    const connection = getConnection();
+    const queryRunner = connection.createQueryRunner();
+    // establish real database connection using our new query runner
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
+    const pendingTransactionData = await queryRunner.manager.save(
+      Transaction,
+      {
+        ...data,
+      },
+    );
 
+    await queryRunner.commitTransaction();
+    return pendingTransactionData;
+  }
+
+  getDecodedTransction1(endcodedTransction: String) {
+    let newEncodedBuffer = Buffer.from(endcodedTransction, 'base64'); // get encoded buffer
+
+    return web3.Transaction.from(newEncodedBuffer);
+  }
+
+  async sendNft(newconnectionTransction) {
+    // console.log(
+    //   JSON.stringify({
+    //     method: 'sendNft',
+    //     custom: 'newconnectionTransction before partialSign',
+    //     newconnectionTransction,
+    //   }),
+    // );
+    newconnectionTransction.partialSign(...[this.chingariWallet]);
+    // console.log(
+    //   JSON.stringify({
+    //     method: 'sendNft',
+    //     custom: 'newconnectionTransction after partialSign',
+    //     newconnectionTransction,
+    //   }),
+    // );
+    const fromWallet = web3.Keypair.fromSecretKey(
+      new Uint8Array([
+        14, 192, 249, 79, 226, 160, 106, 98, 161, 58, 213, 76, 193, 73, 156,
+        203, 18, 153, 131, 42, 72, 129, 70, 192, 234, 200, 82, 35, 5, 81, 38,
+        223, 108, 109, 129, 4, 106, 12, 141, 191, 37, 225, 178, 203, 32, 73,
+        125, 167, 213, 195, 12, 12, 102, 165, 216, 95, 30, 23, 156, 12, 151, 66,
+        244, 211,
+      ]),
+    );
+    newconnectionTransction.partialSign(...[fromWallet]);
+
+    const wireTransaction = newconnectionTransction.serialize({
+      requireAllSignatures: true,
+      verifySignatures: false,
+    });
+
+    // console.log(
+    //   JSON.stringify({
+    //     method: 'sendNft',
+    //     custom: 'wireTransaction after serialize',
+    //     wireTransaction,
+    //   }),
+    // );
+    const signature = await this.connection1.sendRawTransaction(
+      wireTransaction,
+    );
+    console.log(
+      JSON.stringify({
+        // userId,
+        message: 'after  sendrawTransaction',
+      }),
+    );
+    // console.log(
+    //   JSON.stringify({
+    //     method: 'sendNft',
+    //     custom: 'after signature',
+    //     signature,
+    //   }),
+    // );
+    return signature;
+  }
 }
