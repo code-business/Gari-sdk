@@ -1,6 +1,6 @@
-import { ETransactionCase } from "src/common/enum/status.enum";
-import { Column, CreateDateColumn, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-
+// import { ETransactionCase } from "src/common/enum/status.enum";
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+@Entity()
 export class Transaction {
     @PrimaryGeneratedColumn('uuid')
     id: string;
@@ -15,10 +15,7 @@ export class Transaction {
     status: string;
 
     @Column({
-        type: 'enum',
         nullable: true,
-        enum: ETransactionCase,
-        default: 'transaction',
       })
       case: string;
   

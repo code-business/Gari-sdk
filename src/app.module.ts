@@ -7,6 +7,8 @@ import { AppService } from './app.service';
 import constants from './constants';
 import { WalletModule } from './wallet/wallet.module';
 import { AuthModule } from './auth/auth.module';
+import { Transaction } from './wallet/entities/transaction.entity';
+import { Wallet } from './wallet/entities/wallet.entity';
 
 @Module({
   imports: [
@@ -20,7 +22,7 @@ import { AuthModule } from './auth/auth.module';
       username: 'postgres',
       password: constants.DB_LOCAL_PASSWORD,
       database: constants.DB_LOCAL_DATABASE,
-      entities: [RegisterWallet ],
+      entities: [RegisterWallet, Transaction, Wallet ],
       synchronize: true,
     }),
     WalletModule,
