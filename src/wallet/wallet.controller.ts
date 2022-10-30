@@ -5,17 +5,21 @@ import {
   Body,
   Req,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { WalletService } from './wallet.service';
 import { RegisterAppWalletDto } from './dto/RegisterAppWalletDto,dto';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { SolanaService } from './solana/solana.service';
 import { ETransactionCase, ETransactionStatus } from 'src/common/enum/status.enum';
 import { BuyAppDto, EncodedTransactionDTO, SendAirdrop } from './dto/AppWallet.dto';
 import { keyBy, filter, get } from 'lodash';
 import { amountFromBuffer } from 'src/util/amountTobuffer';
+import { AuthGuard } from 'src/auth/auth.gaurd';
 @ApiTags('Appwallet')
+@UseGuards(AuthGuard)
+@ApiBearerAuth('JWT')
 @Controller('Appwallet')
 export class WalletController {
   constructor(

@@ -13,6 +13,10 @@ async function bootstrap() {
     .setDescription('The Gari-Sdk API description')
     .setVersion('1.0')
     .addTag('solana')
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'JWT',
+    )
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
