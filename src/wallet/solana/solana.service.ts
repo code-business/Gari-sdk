@@ -9,9 +9,26 @@ export class SolanaService {
     private chingariWallet;
     private programId;
     private ASSOCIATED_TOKEN_PROGRAM_ID;
+    private AIRDROP_FEEPAYER_PRIVATE_KEY
     private connection = new web3.Connection(this.SOLANA_API, 'confirmed');
 
-    constructor() { }
+    constructor() { 
+      this.ASSOCIATED_TOKEN_PROGRAM_ID = new web3.PublicKey(
+        process.env.GARI_ASSOCIATED_TOKEN_PROGRAM_ID,
+      );
+
+      this.programId = new web3.PublicKey(process.env.PROGRAM_ID);
+
+      this.myMint = new web3.PublicKey(process.env.GARI_TOKEN_ADDRESS);
+
+      this.AIRDROP_FEEPAYER_PRIVATE_KEY = new Uint8Array(
+        process.env.AIRDROP_FEEPAYER_PRIVATE_KEY.split(',').map((e: any) => e * 1),
+      );
+
+      this.chingariWallet = web3.Keypair.fromSecretKey(
+        this.AIRDROP_FEEPAYER_PRIVATE_KEY,
+        );
+    }
     
     async createAssociatedAccount(pubkey) {
         try {
@@ -30,31 +47,40 @@ export class SolanaService {
     
     async assocaiatedAccountTransaction(associatedAddress, pubkey) { 
         const publicKey = new web3.PublicKey(pubkey);
+        let instructions=[]
 
-        const transaction = new web3.Transaction().add(
-            splToken.Token.createAssociatedTokenAccountInstruction(
-              this.ASSOCIATED_TOKEN_PROGRAM_ID,
-              this.programId,
-              this.myMint,
-              associatedAddress,
-              publicKey,
-              this.chingariWallet.publicKey,
-            ),
-        );
-        
+        instructions.push(new web3.Transaction().add(
+          splToken.Token.createAssociatedTokenAccountInstruction(
+            this.ASSOCIATED_TOKEN_PROGRAM_ID,
+            this.programId,
+            this.myMint,
+            associatedAddress,
+            publicKey,
+            this.chingariWallet.publicKey,
+          ),
+      ))
+
+        const transaction = new web3.Transaction({
+          feePayer: new web3.PublicKey(process.env.GARI_PUBLIC_KEY),
+        }).add(...instructions);
+
         let blockhashObj = await this.connection.getRecentBlockhash('finalized');
         transaction.recentBlockhash = blockhashObj.blockhash;
-    
+        
+        console.log('blockhashObj', blockhashObj)
+
         transaction.sign(this.chingariWallet);
         let endocdeTransction = transaction.serialize({
           requireAllSignatures: false,
           verifySignatures: false,
         });
+        console.log('endocdeTransction', endocdeTransction)
+
         var signature = await this.connection.sendRawTransaction(
           endocdeTransction,
           { skipPreflight: false },
         );
-    
+        console.log('signature', signature)
         return signature;
     }
 }

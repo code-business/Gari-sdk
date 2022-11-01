@@ -17,11 +17,11 @@ export class RegisterAppWalletDto {
   })
   publicKey: String;
 
-  @IsNotEmpty()
-  @ApiProperty({
-    required: true,
-    description: 'Backup encrepted private key of user',
-    example: '',
-  })
-  packageName: String;
+  // @IsNotEmpty()
+  // @ApiProperty({
+  //   required: true,
+  //   description: 'Backup encrepted private key of user',
+  //   example: '',
+  // })
+  // packageName: String;
 }

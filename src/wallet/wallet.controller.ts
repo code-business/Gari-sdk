@@ -5,6 +5,7 @@ import {
   Body,
   Req,
   BadRequestException,
+  
 } from '@nestjs/common';
 import { WalletService } from './wallet.service';
 import { RegisterAppWalletDto } from './dto/RegisterAppWalletDto,dto';
@@ -12,9 +13,10 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { SolanaService } from './solana/solana.service';
 import { ETransactionCase, ETransactionStatus } from 'src/common/enum/status.enum';
-import { BuyAppDto, EncodedTransactionDTO, SendAirdrop } from './dto/AppWallet.dto';
+import { BuyAppDto, ConnectAppWalletDto, EncodedTransactionDTO, GetWalletDetailsDto, SendAirdrop } from './dto/AppWallet.dto';
 import { keyBy, filter, get } from 'lodash';
 import { amountFromBuffer } from 'src/util/amountTobuffer';
+import { iif } from 'rxjs';
 @ApiTags('Appwallet')
 @Controller('Appwallet')
 export class WalletController {
@@ -46,10 +48,34 @@ export class WalletController {
     }
   }
   
+  @Post('connect-wallet')
+  async create(@Body() connectAppWalletDto: ConnectAppWalletDto, @Req() req) {
+    try {
+      let data = {
+        ...connectAppWalletDto,
+        tokenAssociatedAccount: 'null',
+      };
+      const wallet = await this.walletService.connectWallet(data);
+      console.log('wallet', wallet);
+      return {
+        code: 200,
+        error: null,
+        message: 'Success',
+        data: wallet,
+      };
+    } catch (error) {
+      return {
+        code: 400,
+        error: error.message,
+        message: 'Error',
+      };
+    }
+  }
+
   @Post('create')
   async createWallet(@Body() body:CreateWalletDto, @Req() req) {
     try {
-      const userId = req.decoded._id;
+      const userId = "62fe095e9dcd49be214cd818";
       const { publicKey } = body;
 
       const associatedAccount =
@@ -57,16 +83,18 @@ export class WalletController {
       
         let gariLamports = 1;
 
-        //  this is just for testing
-        if (process.env.ENVIRONMENT != 'PRODUCTION') {
-          gariLamports = 1000000;
-        }
+        // //  this is just for testing
+        // if (process.env.ENVIRONMENT != 'PRODUCTION') {
+        //   gariLamports = 1000000;
+        // }
       
       const walletData = {
         publicKey,
         userId,
-        tokenAssociatedAccountpublickey: associatedAccount.toString(),
+        tokenAssociatedAccount: associatedAccount.toString(),
         balance: 0,
+        clientId:'b4059f4a-f32e-4aa8-8051-8945850a856f',
+        appName:'ludo'
       }
 
       const draftTransaction = await this.walletService.walletDbTRansaction(walletData,
@@ -81,18 +109,20 @@ export class WalletController {
           solanaFeeInLamports: 0,
           totalTransactionAmount: gariLamports,
        });
+       console.log('associatedAccount', associatedAccount)
+      const isAssociatedAccount = false
 
-      const signature = await this.solanaService.assocaiatedAccountTransaction(associatedAccount, publicKey)
+      const signature = await this.walletService.assocaiatedAccountTransaction(associatedAccount, publicKey,isAssociatedAccount,
+        walletData.balance)
         .catch(async (error) => {
           this.walletService.deleteWallet({
             userId,
           })
-
           console.log("Create Wallet Failed");
           throw new Error('Create Wallet Failed');
           
         })  
-      
+        console.log('signature', signature)
         await this.walletService.updateTransctions(
           {
             id: draftTransaction.id,
@@ -114,7 +144,7 @@ export class WalletController {
     summary: 'send the airdrop to  receiver public key',
   })
   async sendAirdrop(@Body() sendAirdrop: SendAirdrop) {
-    let userId = 'akshay';
+    let userId = '6307b6f34a4758e0604ee57b';
     const { publicKey, amount } = sendAirdrop;
     const associatedAccount = await this.walletService.getAssociatedAccount(
       publicKey,
@@ -135,14 +165,14 @@ export class WalletController {
       isAssociatedAccount,
       amount,
     );
-    // let wallet;
-    // if (signature) {
-    //   wallet = await this.walletService.updateWallet(
-    //     userId,
-    //     associatedAccount,
-    //     amount,
-    //   );
-    // }
+    let wallet;
+    if (signature) {
+      wallet = await this.walletService.updateWallet(
+        userId,
+        associatedAccount,
+        amount,
+      );
+    }
 
     const data = { signature };
 
@@ -158,21 +188,22 @@ export class WalletController {
   async getEncodedTransaction(@Body() body: EncodedTransactionDTO) {
     try {
       // const { publicKey } = body;
-      let userId = 'akshay';
-      let APP_PUBLIC_KEY = 'HxnzKXSCR7CZ37qGzM1pWmuPcwwJXGdNph34yH2mpgm7';
-      let APP_ASSOC_ACCOUNT = 'FpDS4vzViuPBSxdMTaZREKXNZ1BF8Lsj47TAmDG1Kj4g';
+      let userId = '6307b6f34a4758e0604ee57b';
+      let receiverpubkey = '7tEkQfkPGnCdRwawS4WRS4ZWnChJzKs4A2ULuH62CnM9';
+      let recieverAta = 'E9Ge8hhDeJvGqokWemzYPc4cJFkK8g9t4shYtdukMDMS';
       let coins = 1234;
-      let comission = 10;
+      // let comission = 10;
 
       const senderWallet = await this.walletService.findOne(userId);
+      console.log('senderWallet', senderWallet)
 
       const encodedTransaction =
         await this.walletService.getEncodedTransaction(
           senderWallet,
-          APP_ASSOC_ACCOUNT,
-          APP_PUBLIC_KEY,
+          receiverpubkey,
+          recieverAta,
           coins,
-          comission,
+          // comission,
         );
       return encodedTransaction.toString('base64');
     } catch (error) {
@@ -316,6 +347,39 @@ export class WalletController {
         message: 'success',
         data,
       };
+    } catch (error) {
+      return {
+        code: 400,
+        error: error.message,
+        message: 'Error',
+      };
+    }
+  }
+
+  @Post('getWalletDetails')
+  async getWalletDetails(@Body() body: GetWalletDetailsDto,@Req() req) {
+    const UserId = req.body.userId;
+    console.log('UserId', UserId)
+    try {
+      let wallet
+      if(UserId != undefined){
+         wallet = await this.walletService.findOne(UserId);
+         console.log('wallet', wallet)
+         if(wallet != undefined){
+          return {
+            code: 200,
+            error: null,
+            message: 'Success',
+            data: wallet,
+          };
+         }else{
+          return {
+            code: 200,
+            error: null,
+            message: 'UserId Not Found',
+          };
+        }
+      }
     } catch (error) {
       return {
         code: 400,

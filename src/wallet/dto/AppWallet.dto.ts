@@ -69,3 +69,52 @@ export class BuyAppDto {
   })
   encodedTransaction: String;
 }
+export class ConnectAppWalletDto {
+  @IsNotEmpty()
+  @ApiProperty({
+    required: true,
+    description: 'appName of user',
+    example: '',
+  })
+  appName: String;
+
+  @IsNotEmpty()
+  @ApiProperty({
+    required: true,
+    description: 'clientId of user',
+    example: '',
+  })
+  clientId: string;
+
+  @IsNotEmpty()
+  @ApiProperty({
+    required: true,
+    description: 'public key of user',
+    example: '',
+  })
+  publicKey: String;
+
+  @IsNotEmpty()
+  @ApiProperty({
+    required: true,
+    description: 'userId',
+    example: '',
+  })
+  userId: string;
+
+  // @IsNotEmpty()
+  // @ApiProperty({
+  //   required: true,
+  //   example: '',
+  // })
+  // encryptedPrivateKey: String;
+}
+export class GetWalletDetailsDto {
+  @IsNotEmpty()
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+  UserId: String;
+}

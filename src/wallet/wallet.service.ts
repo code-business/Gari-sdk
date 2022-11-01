@@ -52,7 +52,6 @@ export class WalletService {
 
   ) {
     
-    
     this.ASSOCIATED_TOKEN_PROGRAM_ID = new web3.PublicKey(
       process.env.GARI_ASSOCIATED_TOKEN_PROGRAM_ID,
     );
@@ -82,6 +81,11 @@ export class WalletService {
       clientId,
       encryptedPrivateKey,
     });
+    return data;
+  }
+
+  async connectWallet(wallet) {
+    let data = await this.wallet.save(wallet);
     return data;
   }
 
@@ -133,6 +137,28 @@ export class WalletService {
   async getAccountInfo(publicKey) {
     return this.connection.getParsedAccountInfo(new web3.PublicKey(publicKey));
   }
+  
+  async updateWallet(userId, account, amount) {
+    const connection = getConnection();
+    const queryRunner = connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+   await this.wallet.update(
+        { userId },
+        { tokenAssociatedAccount: account.toString() },
+      );
+      this.wallet.increment({ userId }, 'balance', amount);
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new Error(error.message);
+    } finally {
+      await queryRunner.release();
+    }
+  }
 
   async assocaiatedAccountTransaction(
     associatedAddress,
@@ -170,7 +196,7 @@ export class WalletService {
     const transaction = new web3.Transaction({
       feePayer: new web3.PublicKey(process.env.AIRDROP_FEEPAYER_PUBLIC_KEY),
     }).add(...instructions);
-    let blockhashObj = await this.connection.getRecentBlockhash('finalized');
+    let blockhashObj = await this.connection.getLatestBlockhash('finalized');
     transaction.recentBlockhash = blockhashObj.blockhash;
 
     transaction.sign(this.chingariWallet);
@@ -178,7 +204,8 @@ export class WalletService {
       requireAllSignatures: false,
       verifySignatures: false,
     });
-    var signature = await this.connection.sendRawTransaction(
+    console.log('encodedTransaction', endocdeTransction)
+    const signature = await this.connection.sendRawTransaction(
       endocdeTransction,
       { skipPreflight: false },
     );
@@ -186,8 +213,8 @@ export class WalletService {
     return signature;
   }
 
-  async findOne(userId) {
-    return await this.wallet.findOne( userId );
+  findOne(userId) {
+    return this.wallet.findOne( {userId} );
   }
 
   async getEncodedTransaction(
@@ -195,7 +222,7 @@ export class WalletService {
     receiverPubkeyAta,
     receiverPublicKey,
     coins,
-    comission,
+    // comission,
   ) {
     const instructions = [];
     console.log('senderWallet', senderWallet);
@@ -214,16 +241,16 @@ export class WalletService {
     );
     console.log('instruction', instructions);
     //commission instruction
-    instructions.push(
-      splToken.Token.createTransferInstruction(
-        this.programId,
-        new web3.PublicKey(senderWallet.tokenAssociatedAccount),
-        this.chingariAccountsPublickey,
-        new web3.PublicKey(senderWallet.publicKey),
-        [],
-        comission,
-      ),
-    );
+    // instructions.push(
+    //   splToken.Token.createTransferInstruction(
+    //     this.programId,
+    //     new web3.PublicKey(senderWallet.tokenAssociatedAccount),
+    //     this.chingariAccountsPublickey,
+    //     new web3.PublicKey(senderWallet.publicKey),
+    //     [],
+    //     comission,
+    //   ),
+    // );
 
     // instructions.push(
     //   new web3.TransactionInstruction({
@@ -248,8 +275,8 @@ export class WalletService {
     return encodedTransaction;
   }
   
-  async find(req) {
-    return await this.wallet.find(req);
+   find(req) {
+    return this.wallet.find(req);
   }
   
   async saveTransaction(data: any) {
