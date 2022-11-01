@@ -17,7 +17,10 @@ export class Transaction {
     @Column({
         nullable: true,
       })
-      case: string;
+    case: string;
+    
+    @Column({ nullable: true })
+    signature: string;
   
     @CreateDateColumn({
       type: 'timestamptz',

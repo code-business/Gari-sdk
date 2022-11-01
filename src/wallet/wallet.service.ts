@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import * as web3 from '@solana/web3.js';
 
-import * as splToken from '@solana/spl-token';
+var splToken = require('@solana/spl-token');
 
 import { Injectable, Inject } from '@nestjs/common';
 import {
@@ -102,6 +102,7 @@ export class WalletService {
       transactionResponse = await queryRunner.manager.save(Transaction, {
         ...data,
       });
+      await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -112,7 +113,7 @@ export class WalletService {
   }
 
   async deleteWallet(request) {
-    return await this.registerWalletRepository.delete(request);
+    return await this.wallet.delete(request);
   }
 
   async updateTransctions(filter, request) {

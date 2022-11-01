@@ -12,7 +12,7 @@ import { Wallet } from './entities/wallet.entity';
     [
       RegisterWallet,
       Transaction,
-      Wallet,
+      Wallet
     ]
   )],
   exports:[TypeOrmModule],

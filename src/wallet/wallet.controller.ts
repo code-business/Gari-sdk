@@ -16,7 +16,6 @@ import { ETransactionCase, ETransactionStatus } from 'src/common/enum/status.enu
 import { BuyAppDto, ConnectAppWalletDto, EncodedTransactionDTO, GetWalletDetailsDto, SendAirdrop } from './dto/AppWallet.dto';
 import { keyBy, filter, get } from 'lodash';
 import { amountFromBuffer } from 'src/util/amountTobuffer';
-import { iif } from 'rxjs';
 @ApiTags('Appwallet')
 @Controller('Appwallet')
 export class WalletController {
@@ -75,7 +74,7 @@ export class WalletController {
   @Post('create')
   async createWallet(@Body() body:CreateWalletDto, @Req() req) {
     try {
-      const userId = "62fe095e9dcd49be214cd818";
+      const userId = "6307b6f34a4758e0604ee57b";
       const { publicKey } = body;
 
       const associatedAccount =
@@ -99,7 +98,7 @@ export class WalletController {
 
       const draftTransaction = await this.walletService.walletDbTRansaction(walletData,
         {
-          fromUserId: "",
+          fromUserId: "12345678",
           toUserId: userId,
           status: ETransactionStatus.DRAFT,
           fromPublicKey: process.env.GARI_PUBLIC_KEY,
@@ -118,6 +117,13 @@ export class WalletController {
           this.walletService.deleteWallet({
             userId,
           })
+          console.log(
+            JSON.stringify({
+              message: "sdfghjk",
+              error: `${error}`
+            })
+          );
+          
           console.log("Create Wallet Failed");
           throw new Error('Create Wallet Failed');
           
@@ -131,7 +137,12 @@ export class WalletController {
             status: ETransactionStatus.PENDING,
             signature: signature,
           },
-        );
+      );
+      
+      console.log("done");
+      return {
+        signature
+      }
 
     } catch (error) {
       console.log(error);
