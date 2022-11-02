@@ -74,7 +74,7 @@ export class WalletController {
   @Post('create')
   async createWallet(@Body() body:CreateWalletDto, @Req() req) {
     try {
-      const userId = "6307b6f34a4758e0604ee57b";
+      const userId = "62fe095e9dcd49be214cd818";
       const { publicKey } = body;
 
       const associatedAccount =

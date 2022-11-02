@@ -7,12 +7,6 @@ import { Injectable, Inject } from '@nestjs/common';
 import {
   Repository,
   getConnection,
-  MoreThanOrEqual,
-  In,
-  Equal,
-  Between,
-  LessThanOrEqual,
-  LessThan,
 } from 'typeorm';
 import {InjectRepository} from '@nestjs/typeorm'
 import { RegisterWallet } from './entities/registerWallet.entity';
