@@ -212,6 +212,11 @@ export class WalletService {
     return this.wallet.findOne( {userId} );
   }
 
+
+  findPubkey(publicKey){
+    return this.wallet.findOne( {publicKey} );
+  }
+  
   async getEncodedTransaction(
     senderWallet,
     receiverPubkeyAta,

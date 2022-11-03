@@ -118,3 +118,13 @@ export class GetWalletDetailsDto {
   })
   UserId: String;
 }
+
+export class GetRecWalletDetailsDto {
+  @IsNotEmpty()
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+  publicKey: String;
+}

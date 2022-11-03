@@ -13,7 +13,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { SolanaService } from './solana/solana.service';
 import { ETransactionCase, ETransactionStatus } from 'src/common/enum/status.enum';
-import { BuyAppDto, ConnectAppWalletDto, EncodedTransactionDTO, GetWalletDetailsDto, SendAirdrop } from './dto/AppWallet.dto';
+import { BuyAppDto, ConnectAppWalletDto, EncodedTransactionDTO, GetRecWalletDetailsDto, GetWalletDetailsDto, SendAirdrop } from './dto/AppWallet.dto';
 import { keyBy, filter, get } from 'lodash';
 import { amountFromBuffer } from 'src/util/amountTobuffer';
 @ApiTags('Appwallet')
@@ -91,7 +91,7 @@ export class WalletController {
         publicKey,
         userId,
         tokenAssociatedAccount: associatedAccount.toString(),
-        balance: 0,
+        balance: 1,
         clientId:'b4059f4a-f32e-4aa8-8051-8945850a856f',
         appName:'ludo'
       }
@@ -369,12 +369,45 @@ export class WalletController {
 
   @Post('getWalletDetails')
   async getWalletDetails(@Body() body: GetWalletDetailsDto,@Req() req) {
-    const UserId = req.body.userId;
-    console.log('UserId', UserId)
+    const userId = req.body.userId;
     try {
       let wallet
-      if(UserId != undefined){
-         wallet = await this.walletService.findOne(UserId);
+      console.log('userId', userId)
+      if(userId != undefined){
+         wallet = await this.walletService.findOne(userId);
+         console.log('wallet=>', wallet)
+         if(wallet != undefined){
+          return {
+            code: 200,
+            error: null,
+            message: 'Success',
+            data: wallet,
+          };
+         }else{
+          return {
+            code: 200,
+            error: null,
+            message: 'UserId Not Found',
+          };
+        }
+      }
+    } catch (error) {
+      return {
+        code: 400,
+        error: error.message,
+        message: 'Error',
+      };
+    }
+  }
+
+  @Post('getRecWalletDetails')
+  async getRecWalletDetails(@Body() body: GetRecWalletDetailsDto,@Req() req) {
+    const publicKey = req.body.publicKey;
+    try {
+      let wallet
+      console.log('PublicKey', publicKey)
+      if(publicKey != undefined){
+         wallet = await this.walletService.findPubkey(publicKey);
          console.log('wallet', wallet)
          if(wallet != undefined){
           return {
