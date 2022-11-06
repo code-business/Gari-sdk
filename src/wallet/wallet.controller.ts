@@ -72,9 +72,9 @@ export class WalletController {
   }
 
   @Post('create')
-  async createWallet(@Body() body:CreateWalletDto, @Req() req) {
+  async createWallet(@Body() body: CreateWalletDto) {
     try {
-      const userId = "62fe095e9dcd49be214cd818";
+      const userId = "62fe095e9dcd49be214cd819";
       const { publicKey } = body;
 
       const associatedAccount =
@@ -368,8 +368,8 @@ export class WalletController {
   }
 
   @Post('getWalletDetails')
-  async getWalletDetails(@Body() body: GetWalletDetailsDto,@Req() req) {
-    const userId = req.body.userId;
+  async getWalletDetails(@Body() body: GetWalletDetailsDto) {
+    const userId = body.userId;
     try {
       let wallet
       console.log('userId', userId)
@@ -385,7 +385,7 @@ export class WalletController {
           };
          }else{
           return {
-            code: 200,
+            code: 404,
             error: null,
             message: 'UserId Not Found',
           };

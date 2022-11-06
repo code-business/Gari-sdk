@@ -116,7 +116,7 @@ export class GetWalletDetailsDto {
       '',
     required: true,
   })
-  UserId: String;
+  userId: String;
 }
 
 export class GetRecWalletDetailsDto {
