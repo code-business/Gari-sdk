@@ -74,7 +74,7 @@ export class WalletController {
   @Post('create')
   async createWallet(@Body() body:CreateWalletDto, @Req() req) {
     try {
-      const userId = "62fe095e9dcd49be214cd818";
+      const userId = "62fe095e9dcd49be214cd819";
       const { publicKey } = body;
 
       const associatedAccount =
@@ -119,7 +119,7 @@ export class WalletController {
           })
           console.log(
             JSON.stringify({
-              message: "sdfghjk",
+              message: "gfhjvjv",
               error: `${error}`
             })
           );
@@ -141,7 +141,8 @@ export class WalletController {
       
       console.log("done");
       return {
-        signature
+        signature,
+        walletData
       }
 
     } catch (error) {
@@ -199,9 +200,9 @@ export class WalletController {
   async getEncodedTransaction(@Body() body: EncodedTransactionDTO) {
     try {
       // const { publicKey } = body;
-      let userId = '6307b6f34a4758e0604ee57b';
-      let receiverpubkey = '7tEkQfkPGnCdRwawS4WRS4ZWnChJzKs4A2ULuH62CnM9';
-      let recieverAta = 'E9Ge8hhDeJvGqokWemzYPc4cJFkK8g9t4shYtdukMDMS';
+      let userId = '62fe095e9dcd49be214cd819';
+      let receiverpubkey = 'HuMHLVnnKuApL8kXs7mBSizkoghesBRbfzwjtU4LG1Ln';
+      let recieverAta = '9GyRtDfLk7DREbUmd6oBMhKZHXSNJZ5stfe9wrn4o6GF';
       let coins = 1234;
       // let comission = 10;
 
@@ -229,6 +230,24 @@ export class WalletController {
       const { encodedTransaction } = body;
       const decodedTransction =
         this.walletService.getDecodedTransction1(encodedTransaction);
+
+
+        const signature2 = await this.walletService
+        .sendNft(decodedTransction)
+        .catch(async (error) => {
+          // await this.walletService.deleteAndUpdateWalletbalance(
+          //   pendingTransactionData.id,
+          //   undefined,
+          //   undefined,
+          //   undefined,
+          //   pendingTransactionData,
+          // );
+          throw new Error(error);
+        });
+      console.log('signature=>', signature2);
+
+      return {signature2}
+
       // console.log('decodedTransction=>', decodedTransction);
       //  console.log(decodedTransction.instructions.length)get
       let senderWalletPublicKey = get(
@@ -423,6 +442,35 @@ export class WalletController {
             message: 'UserId Not Found',
           };
         }
+      }
+    } catch (error) {
+      return {
+        code: 400,
+        error: error.message,
+        message: 'Error',
+      };
+    }
+  }
+
+  @Post('saveTransactions')
+  async saveTransactions(@Body() data) {
+    try {
+      let transactionData = await this.walletService.saveTransaction(data);
+         console.log('transactionData', transactionData)
+         if(!transactionData){
+          return {
+            code: 200,
+            error: null,
+            message: 'Data not saved',
+          };
+         }else{
+          return {
+            code: 200,
+            error: null,
+            message: 'Success',
+            data: transactionData,
+          };
+          
       }
     } catch (error) {
       return {

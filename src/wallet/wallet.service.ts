@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import * as web3 from '@solana/web3.js';
-
-var splToken = require('@solana/spl-token');
+import { Token } from '@solana/spl-token';
 
 import { Injectable, Inject } from '@nestjs/common';
 import {
@@ -117,7 +116,7 @@ export class WalletService {
   async getAssociatedAccount(pubkey) {
     try {
       const publicKey = new web3.PublicKey(pubkey);
-      const associatedAddress = await splToken.Token.getAssociatedTokenAddress(
+      const associatedAddress = await Token.getAssociatedTokenAddress(
         this.ASSOCIATED_TOKEN_PROGRAM_ID, //this is in env
         this.programId,
         this.myMint, //gari
@@ -166,7 +165,7 @@ export class WalletService {
     const instructions = [];
     if (!isAssociatedAccount) {
       instructions.push(
-        splToken.Token.createAssociatedTokenAccountInstruction(
+        Token.createAssociatedTokenAccountInstruction(
           this.ASSOCIATED_TOKEN_PROGRAM_ID,
           this.programId,
           this.myMint,
@@ -178,7 +177,7 @@ export class WalletService {
     }
 
     instructions.push(
-      splToken.Token.createTransferInstruction(
+      Token.createTransferInstruction(
         this.programId,
         this.chingariAccountsPublickey,
         associatedAddress,
@@ -230,7 +229,7 @@ export class WalletService {
 
     //transfer instruction
     instructions.push(
-      splToken.Token.createTransferInstruction(
+      Token.createTransferInstruction(
         this.programId,
         new web3.PublicKey(senderWallet.tokenAssociatedAccount),
         new web3.PublicKey(receiverPubkeyAta), //associatedAddress,
@@ -242,7 +241,7 @@ export class WalletService {
     console.log('instruction', instructions);
     //commission instruction
     // instructions.push(
-    //   splToken.Token.createTransferInstruction(
+    //   Token.createTransferInstruction(
     //     this.programId,
     //     new web3.PublicKey(senderWallet.tokenAssociatedAccount),
     //     this.chingariAccountsPublickey,
@@ -319,16 +318,16 @@ export class WalletService {
     //     newconnectionTransction,
     //   }),
     // );
-    const fromWallet = web3.Keypair.fromSecretKey(
-      new Uint8Array([
-        14, 192, 249, 79, 226, 160, 106, 98, 161, 58, 213, 76, 193, 73, 156,
-        203, 18, 153, 131, 42, 72, 129, 70, 192, 234, 200, 82, 35, 5, 81, 38,
-        223, 108, 109, 129, 4, 106, 12, 141, 191, 37, 225, 178, 203, 32, 73,
-        125, 167, 213, 195, 12, 12, 102, 165, 216, 95, 30, 23, 156, 12, 151, 66,
-        244, 211,
-      ]),
-    );
-    newconnectionTransction.partialSign(...[fromWallet]);
+    // const fromWallet = web3.Keypair.fromSecretKey(
+    //   new Uint8Array([
+    //     14, 192, 249, 79, 226, 160, 106, 98, 161, 58, 213, 76, 193, 73, 156,
+    //     203, 18, 153, 131, 42, 72, 129, 70, 192, 234, 200, 82, 35, 5, 81, 38,
+    //     223, 108, 109, 129, 4, 106, 12, 141, 191, 37, 225, 178, 203, 32, 73,
+    //     125, 167, 213, 195, 12, 12, 102, 165, 216, 95, 30, 23, 156, 12, 151, 66,
+    //     244, 211,
+    //   ]),
+    // );
+    // newconnectionTransction.partialSign(...[fromWallet]);
 
     const wireTransaction = newconnectionTransction.serialize({
       requireAllSignatures: true,

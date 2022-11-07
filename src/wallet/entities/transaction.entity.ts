@@ -18,6 +18,12 @@ export class Transaction {
         nullable: true,
       })
     case: string;
+
+    @Column({ nullable: false })
+    fromPublicKey: string;
+  
+    @Column()
+    toPublicKey: string;
     
     @Column({ nullable: true })
     signature: string;
