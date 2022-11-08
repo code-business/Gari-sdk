@@ -19,6 +19,14 @@ async function airdrop(publicKey, amount) {
         amount,
     );
     console.log({ signature });
+    if (signature) {
+        return {
+            userid: userId,
+            Signature: signature,
+            status: "draft",
+            message: "success"
+        };
+    }
 }
 
 airdrop();
