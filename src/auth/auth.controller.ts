@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { loginDTO } from './dto/login.dto';
-import  * as fs from "fs"
+import * as fs from "fs"
 import * as jose from "node-jose"
+const ms = require("ms");
 
 @Controller('auth')
 export class AuthController {
@@ -23,15 +24,15 @@ export class AuthController {
       const opt = { compact: true, jwk: key, fields: { typ: 'jwt' } };
 
       const payload = JSON.stringify({
-        exp: '1d',
-        sub: 'dummy-app',
+        exp: Math.floor((Date.now() + ms("1d")) / 1000),
+        sub: 'gari-sdk',
         name,
         uid: id,
         iat: Math.floor(Date.now() / 1000),
       });
 
-        const token = await jose.JWS.createSign(opt, key).update(payload).final();
-        
+      const token = await jose.JWS.createSign(opt, key).update(payload).final();
+
       return token;
     } catch (error) {
       console.log('error', error);
