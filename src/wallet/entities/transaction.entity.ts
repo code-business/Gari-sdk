@@ -27,6 +27,9 @@ export class Transaction {
     
     @Column({ nullable: true })
     signature: string;
+
+    @Column({ nullable: true })
+    totalTransactionAmount:string
   
     @CreateDateColumn({
       type: 'timestamptz',

@@ -116,7 +116,7 @@ export class GetWalletDetailsDto {
       '',
     required: true,
   })
-  UserId: String;
+  userId: String;
 }
 
 export class GetRecWalletDetailsDto {
@@ -127,4 +127,66 @@ export class GetRecWalletDetailsDto {
     required: true,
   })
   publicKey: String;
+}
+
+export class SaveTransactionData {
+
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+  fromUserId: string;
+  
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+  toUserId: string;
+  
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+  status: string;
+
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+  case: string;
+
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+  fromPublicKey: string;
+
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+  toPublicKey: string;
+  
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+  signature: string;
+}
+
+export class UpdateTransaction {
+  @IsNotEmpty()
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+  signature: String;
 }

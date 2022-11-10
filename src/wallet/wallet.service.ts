@@ -211,15 +211,14 @@ export class WalletService {
     return this.wallet.findOne( {userId} );
   }
 
-
   findPubkey(publicKey){
     return this.wallet.findOne( {publicKey} );
   }
   
   async getEncodedTransaction(
     senderWallet,
-    receiverPubkeyAta,
     receiverPublicKey,
+    receiverPubkeyAta,
     coins,
     // comission,
   ) {
@@ -234,6 +233,7 @@ export class WalletService {
         new web3.PublicKey(senderWallet.tokenAssociatedAccount),
         new web3.PublicKey(receiverPubkeyAta), //associatedAddress,
         new web3.PublicKey(senderWallet.publicKey),
+        // new web3.PublicKey(receiverPublicKey),
         [],
         coins,
       ),
@@ -285,7 +285,7 @@ export class WalletService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
-    const pendingTransactionData = await queryRunner.manager.save(
+    const TransactionData = await queryRunner.manager.save(
       Transaction,
       {
         ...data,
@@ -293,7 +293,7 @@ export class WalletService {
     );
 
     await queryRunner.commitTransaction();
-    return pendingTransactionData;
+    return TransactionData;
   }
 
   getDecodedTransction1(endcodedTransction: String) {
