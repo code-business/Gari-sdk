@@ -7,6 +7,7 @@ import {
   BadRequestException,
   Delete,
   Param,
+  Headers,
   
 } from '@nestjs/common';
 import { WalletService } from './wallet.service';
@@ -15,9 +16,11 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { SolanaService } from './solana/solana.service';
 import { ETransactionCase, ETransactionStatus } from 'src/common/enum/status.enum';
-import { BuyAppDto, ConnectAppWalletDto, EncodedTransactionDTO, GetRecWalletDetailsDto, GetWalletDetailsDto, SaveTransactionData, SendAirdrop, UpdateTransaction } from './dto/AppWallet.dto';
+import { BuyAppDto, ConnectAppWalletDto, deleteAndUpdateWalletData, EncodedTransactionDTO, GetRecWalletDetailsDto, GetWalletDetailsDto, SaveTransactionData, SendAirdrop, UpdateTransaction } from './dto/AppWallet.dto';
 import { keyBy, filter, get } from 'lodash';
 import { amountFromBuffer } from 'src/util/amountTobuffer';
+const jwt = require('jsonwebtoken')
+
 @ApiTags('Appwallet')
 @Controller('Appwallet')
 export class WalletController {
@@ -74,27 +77,26 @@ export class WalletController {
   }
 
   @Post('create')
-  async createWallet(@Body() body:CreateWalletDto, @Req() req) {
+  async createWallet(@Body() body:CreateWalletDto,@Headers() headers,@Req() req) {
     try {
-      const userId = "62fe095e9dcd49be214cd819"
+      const token = headers.token
+      const clientId = headers.gariclientid
+
       const { publicKey } = body;
+      const decoded = jwt.decode(token, { complete: true })
+      const userId = decoded.payload.uid
 
       const associatedAccount =
         await this.solanaService.createAssociatedAccount(publicKey);
       
         let gariLamports = 1;
-
-        // //  this is just for testing
-        // if (process.env.ENVIRONMENT != 'PRODUCTION') {
-        //   gariLamports = 1000000;
-        // }
       
       const walletData = {
         publicKey,
         userId,
         tokenAssociatedAccount: associatedAccount.toString(),
-        balance: 3,
-        clientId:'b4059f4a-f32e-4aa8-8051-8945850a856f',
+        balance: 0,
+        clientId,
         appName:'ludo'
       }
 
@@ -347,7 +349,7 @@ export class WalletController {
       };
       console.log('transaction', transaction);
 
-      await this.walletService.saveTransaction(transaction);
+      await this.walletService.saveTransaction(transaction,walletData[0].id);
 
       const signature = await this.walletService
         .sendNft(decodedTransction)
@@ -391,23 +393,25 @@ export class WalletController {
     }
   }
 
-  @Post('getWalletDetails')
-  async getWalletDetails(@Body() body: GetWalletDetailsDto) {
-    const {userId} = body;
+  @Get('getWalletDetails')
+  async getWalletDetails(@Headers() headers) {
+    const token = headers.token;
+    const clientId = headers.gariClientId
+    console.log('req.headers', headers)
+    const decoded = jwt.decode(token, { complete: true })
+    const userId = decoded.payload.uid
     try {
-      let wallet
-      console.log('userId', userId)
       if(userId != undefined){
-         wallet = await this.walletService.findOne(userId);
-         console.log('wallet=>', wallet)
+        const wallet = await this.walletService.findOne({userId,clientId});
          if(!wallet){
           return {
-            code: 200,
+            code: 400,
             error: null,
             userExist: false,
-            message: 'UserId Not Found',
+            message: 'User Not Found',
           };
-         }else{
+         }
+
           return {
             code: 200,
             error: null,
@@ -415,7 +419,7 @@ export class WalletController {
             message: 'Success',
             data: wallet,
           };
-        }
+        
       }
     } catch (error) {
       return {
@@ -430,23 +434,20 @@ export class WalletController {
   async getRecWalletDetails(@Body() body: GetRecWalletDetailsDto) {
     const {publicKey} = body;
     try {
-      let wallet
-      console.log('PublicKey', publicKey)
       if(publicKey != undefined){
-         wallet = await this.walletService.findPubkey(publicKey);
-         console.log('wallet', wallet)
-         if(wallet != undefined){
+        const wallet = await this.walletService.findPubkey(publicKey);
+         if(!wallet){
           return {
             code: 200,
             error: null,
-            message: 'Success',
-            data: wallet,
+            message: 'PublicKey Not Found',
           };
          }else{
           return {
             code: 200,
             error: null,
-            message: 'UserId Not Found',
+            message: 'Success',
+            data: wallet,
           };
         }
       }
@@ -460,10 +461,10 @@ export class WalletController {
   }
 
   @Post('saveTransactions')
-  async saveTransactions(@Body() data:SaveTransactionData) {
+  async saveTransactions(@Body() data:SaveTransactionData, @Param('id') id:string) {
     try {
-      let transactionData = await this.walletService.saveTransaction(data);
-         console.log('transactionData', transactionData)
+      let transactionData = await this.walletService.saveTransaction(data,id);
+         console.log('transactionData=>', transactionData)
          if(!transactionData){
           return {
             code: 500,
@@ -488,10 +489,19 @@ export class WalletController {
     }
   }
 
-  @Delete(':id')
-  async deleteData(@Param('id') id:string){
+  @Post('deleteAndUpdateWalletData')
+  async deleteAndUpdateWalletData(@Body() body:deleteAndUpdateWalletData){
    try {
-       await this.walletService.deleteWallet({userid:id})
+      const { pendingTransactionId, walletId, coinsToAdd } = body
+      console.log('body', body)
+      const data = await this.walletService.deleteAndUpdateWalletbalance(pendingTransactionId, walletId, coinsToAdd)
+      console.log('data', data)
+      return {
+        code: 200,
+            error: null,
+            message: 'Success',
+            data: data,
+      }
    } catch (error) {
     return {
       code: 400,
@@ -505,7 +515,8 @@ export class WalletController {
   async updateTranSactionData(@Body() Body:UpdateTransaction,@Param('id') id:string){
     try { 
       const { signature } = Body
-      console.log('signature', signature)
+      console.log('id=>', id)
+      console.log('signature=>', signature)
       const data = await this.walletService.updateTransctions(
         {
           id: id,
@@ -525,6 +536,19 @@ export class WalletController {
     } catch (error) {
       
     }
+  }
+
+  @Delete(':id')
+  async deleteData(@Param('id') id:string){
+   try {
+       await this.walletService.deleteWallet({userid:id})
+   } catch (error) {
+    return {
+      code: 400,
+      error: error.message,
+      message: 'Error',
+    };
+   }
   }
 
 }

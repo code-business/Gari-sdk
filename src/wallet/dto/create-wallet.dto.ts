@@ -16,5 +16,5 @@ export class CreateWalletDto {
       description: 'userId of user',
       example: '',
     })
-    userId: String;
+    token: String;
 }

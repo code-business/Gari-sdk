@@ -116,7 +116,7 @@ export class GetWalletDetailsDto {
       '',
     required: true,
   })
-  userId: String;
+  token: String;
 }
 
 export class GetRecWalletDetailsDto {
@@ -190,3 +190,30 @@ export class UpdateTransaction {
   })
   signature: String;
 }
+
+export class deleteAndUpdateWalletData {
+  @IsNotEmpty()
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+  pendingTransactionId: String;
+
+  @IsNotEmpty()
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+walletId: String;
+
+  @IsNotEmpty()
+  @ApiProperty({
+    example:
+      '',
+    required: true,
+  })
+coinsToAdd: String;
+}
+
