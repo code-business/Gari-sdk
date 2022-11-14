@@ -9,4 +9,12 @@ export class CreateWalletDto {
       example: '',
     })
     publicKey: String;
+
+    @IsNotEmpty()
+    @ApiProperty({
+      required: true,
+      description: 'userId of user',
+      example: '',
+    })
+    token: String;
 }

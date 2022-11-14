@@ -6,11 +6,13 @@ import { Injectable, Inject } from '@nestjs/common';
 import {
   Repository,
   getConnection,
+  MoreThanOrEqual,
 } from 'typeorm';
 import {InjectRepository} from '@nestjs/typeorm'
 import { RegisterWallet } from './entities/registerWallet.entity';
 import { Wallet } from './entities/wallet.entity';
 import { Transaction } from "./entities/transaction.entity";
+import { ETransactionStatus } from 'src/common/enum/status.enum';
 // import { transactions } from 'src/wallet/entity/transactions.entity';
 
 const crypto = require('crypto');
@@ -107,6 +109,10 @@ export class WalletService {
 
   async deleteWallet(request) {
     return await this.wallet.delete(request);
+  }
+
+  deleteTransactionData(request) {
+    return this.transactions.delete(request);
   }
 
   async updateTransctions(filter, request) {
@@ -207,10 +213,9 @@ export class WalletService {
     return signature;
   }
 
-  findOne(userId) {
-    return this.wallet.findOne( {userId} );
+  findOne(filter) {
+    return this.wallet.findOne( filter);
   }
-
 
   findPubkey(publicKey){
     return this.wallet.findOne( {publicKey} );
@@ -218,8 +223,8 @@ export class WalletService {
   
   async getEncodedTransaction(
     senderWallet,
-    receiverPubkeyAta,
     receiverPublicKey,
+    receiverPubkeyAta,
     coins,
     // comission,
   ) {
@@ -234,6 +239,7 @@ export class WalletService {
         new web3.PublicKey(senderWallet.tokenAssociatedAccount),
         new web3.PublicKey(receiverPubkeyAta), //associatedAddress,
         new web3.PublicKey(senderWallet.publicKey),
+        // new web3.PublicKey(receiverPublicKey),
         [],
         coins,
       ),
@@ -278,14 +284,31 @@ export class WalletService {
     return this.wallet.find(req);
   }
   
-  async saveTransaction(data: any) {
+  async saveTransaction(data: any,senderWalletId:string) {
     const connection = getConnection();
     const queryRunner = connection.createQueryRunner();
     // establish real database connection using our new query runner
     await queryRunner.connect();
     await queryRunner.startTransaction();
+    
+    let coinsToBeDeducted = data.coins;
+      if(senderWalletId){
 
-    const pendingTransactionData = await queryRunner.manager.save(
+        let balanceupdate = await queryRunner.manager.decrement(
+          Wallet,
+          { id: senderWalletId, balance: MoreThanOrEqual(coinsToBeDeducted) },
+          'balance',
+          coinsToBeDeducted,
+        );
+        
+        if (balanceupdate.affected == 0) {
+          // console.log('walletID', senderWalletId);
+  
+          throw new Error('Insufficient balance');
+        }
+      }
+
+    const TransactionData = await queryRunner.manager.save(
       Transaction,
       {
         ...data,
@@ -293,7 +316,7 @@ export class WalletService {
     );
 
     await queryRunner.commitTransaction();
-    return pendingTransactionData;
+    return TransactionData;
   }
 
   getDecodedTransction1(endcodedTransction: String) {
@@ -303,60 +326,20 @@ export class WalletService {
   }
 
   async sendNft(newconnectionTransction) {
-    // console.log(
-    //   JSON.stringify({
-    //     method: 'sendNft',
-    //     custom: 'newconnectionTransction before partialSign',
-    //     newconnectionTransction,
-    //   }),
-    // );
     newconnectionTransction.partialSign(...[this.chingariWallet]);
-    // console.log(
-    //   JSON.stringify({
-    //     method: 'sendNft',
-    //     custom: 'newconnectionTransction after partialSign',
-    //     newconnectionTransction,
-    //   }),
-    // );
-    // const fromWallet = web3.Keypair.fromSecretKey(
-    //   new Uint8Array([
-    //     14, 192, 249, 79, 226, 160, 106, 98, 161, 58, 213, 76, 193, 73, 156,
-    //     203, 18, 153, 131, 42, 72, 129, 70, 192, 234, 200, 82, 35, 5, 81, 38,
-    //     223, 108, 109, 129, 4, 106, 12, 141, 191, 37, 225, 178, 203, 32, 73,
-    //     125, 167, 213, 195, 12, 12, 102, 165, 216, 95, 30, 23, 156, 12, 151, 66,
-    //     244, 211,
-    //   ]),
-    // );
-    // newconnectionTransction.partialSign(...[fromWallet]);
-
     const wireTransaction = newconnectionTransction.serialize({
       requireAllSignatures: true,
       verifySignatures: false,
     });
 
-    // console.log(
-    //   JSON.stringify({
-    //     method: 'sendNft',
-    //     custom: 'wireTransaction after serialize',
-    //     wireTransaction,
-    //   }),
-    // );
     const signature = await this.connection1.sendRawTransaction(
       wireTransaction,
     );
     console.log(
       JSON.stringify({
-        // userId,
         message: 'after  sendrawTransaction',
       }),
     );
-    // console.log(
-    //   JSON.stringify({
-    //     method: 'sendNft',
-    //     custom: 'after signature',
-    //     signature,
-    //   }),
-    // );
     return signature;
   }
 
@@ -369,4 +352,41 @@ export class WalletService {
     return this.transactions.findAndCount(request);
   }
 
+
+  async deleteAndUpdateWalletbalance(
+    pendingTransactionId,
+    walletId,
+    coinsToAdd,
+  ) {
+    const connection = getConnection();
+    const queryRunner = connection.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      // todo: add status == draft in below query:done
+      if(walletId){
+
+        await queryRunner.manager.increment(
+          Wallet,
+          { id: walletId },
+          'balance',
+          coinsToAdd,
+        );
+      }
+      
+
+      await queryRunner.manager.delete(Transaction, {
+        id: pendingTransactionId,
+        status: ETransactionStatus.DRAFT,
+      });
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new Error(error.message);
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }

@@ -5,7 +5,10 @@ import {
   Body,
   Req,
   BadRequestException,
-  Param
+  Delete,
+  Param,
+  Headers,
+  
 } from '@nestjs/common';
 import { Not, In, Between, MoreThan } from 'typeorm';
 import { WalletService } from './wallet.service';
@@ -15,9 +18,11 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { SolanaService } from './solana/solana.service';
 import { ETransactionCase, ETransactionStatus } from 'src/common/enum/status.enum';
-import { BuyAppDto, ConnectAppWalletDto, EncodedTransactionDTO, GetRecWalletDetailsDto, GetWalletDetailsDto, SendAirdrop } from './dto/AppWallet.dto';
-import { keyBy, filter, get, flattenDeep, uniq, } from 'lodash';
+import { BuyAppDto, ConnectAppWalletDto, deleteAndUpdateWalletData, EncodedTransactionDTO, GetRecWalletDetailsDto, GetWalletDetailsDto, SaveTransactionData, SendAirdrop, UpdateTransaction } from './dto/AppWallet.dto';
+import { keyBy, filter, get } from 'lodash';
 import { amountFromBuffer } from 'src/util/amountTobuffer';
+const jwt = require('jsonwebtoken')
+
 @ApiTags('Appwallet')
 @Controller('Appwallet')
 export class WalletController {
@@ -74,37 +79,35 @@ export class WalletController {
   }
 
   @Post('create')
-  async createWallet(@Body() body:CreateWalletDto, @Req() req) {
+  async createWallet(@Body() body:CreateWalletDto,@Headers() headers,@Req() req) {
     try {
-      //const userId = "62fe095e9dcd49be214cd819";
-      const userId = "632824c4846cac002005e92";
-      //const { publicKey } = body;
-      const publicKey = "GC7Y4xY3bQryLtPvQVvJLupkNVjfZZh5aWfMvAhGiJWN";
+      const token = headers.token
+      const clientId = headers.gariclientid
+
+      const { publicKey } = body;
+      const decoded = jwt.decode(token, { complete: true })
+      const userId = decoded.payload.uid
 
       const associatedAccount =
         await this.solanaService.createAssociatedAccount(publicKey);
       
         let gariLamports = 1;
-
-        // //  this is just for testing
-        // if (process.env.ENVIRONMENT != 'PRODUCTION') {
-        //   gariLamports = 1000000;
-        // }
       
       const walletData = {
         publicKey,
         userId,
         tokenAssociatedAccount: associatedAccount.toString(),
-        balance: 1,
-        clientId:'b4059f4a-f32e-4aa8-8051-8945850a856f',
+        balance: 0,
+        clientId,
         appName:'ludo'
       }
 
       const draftTransaction = await this.walletService.walletDbTRansaction(walletData,
         {
-          fromUserId: "12345678",
+          fromUserId: "chingari",
           toUserId: userId,
           status: ETransactionStatus.DRAFT,
+          case:'transaction',
           fromPublicKey: process.env.GARI_PUBLIC_KEY,
           toPublicKey: publicKey,
           coins: gariLamports,
@@ -204,10 +207,11 @@ export class WalletController {
   async getEncodedTransaction(@Body() body: EncodedTransactionDTO) {
     try {
       // const { publicKey } = body;
+      // 6307b6f34a4758e0604ee57b
       let userId = '62fe095e9dcd49be214cd819';
-      let receiverpubkey = 'HuMHLVnnKuApL8kXs7mBSizkoghesBRbfzwjtU4LG1Ln';
-      let recieverAta = '9GyRtDfLk7DREbUmd6oBMhKZHXSNJZ5stfe9wrn4o6GF';
-      let coins = 1234;
+      let receiverpubkey = '8qbUph3GnS92qjHRKuvqQaGHjwCMpMoR3FTdGM2VfRqS';
+      let recieverAta = 'DMJNqUdrTSFkfpkgshdoy4tu3ySwVjFB6MEy2xRAqCcQ';
+      let coins = 1;
       // let comission = 10;
 
       const senderWallet = await this.walletService.findOne(userId);
@@ -232,10 +236,11 @@ export class WalletController {
     try {
       // let userId = req.decoded._id;
       const { encodedTransaction } = body;
+      console.log('encodedTransaction=>', encodedTransaction)
       const decodedTransction =
         this.walletService.getDecodedTransction1(encodedTransaction);
 
-
+        console.log('decodedTransction', decodedTransction)
         const signature2 = await this.walletService
         .sendNft(decodedTransction)
         .catch(async (error) => {
@@ -250,7 +255,7 @@ export class WalletController {
         });
       console.log('signature=>', signature2);
 
-      return {signature2}
+      // return {signature2}
 
       // console.log('decodedTransction=>', decodedTransction);
       //  console.log(decodedTransction.instructions.length)get
@@ -346,7 +351,7 @@ export class WalletController {
       };
       console.log('transaction', transaction);
 
-      await this.walletService.saveTransaction(transaction);
+      await this.walletService.saveTransaction(transaction,walletData[0].id);
 
       const signature = await this.walletService
         .sendNft(decodedTransction)
@@ -390,29 +395,33 @@ export class WalletController {
     }
   }
 
-  @Post('getWalletDetails')
-  async getWalletDetails(@Body() body: GetWalletDetailsDto, @Req() req) {
-    const userId = req.body.userId;
+  @Get('getWalletDetails')
+  async getWalletDetails(@Headers() headers) {
+    const token = headers.token;
+    const clientId = headers.gariClientId
+    console.log('req.headers', headers)
+    const decoded = jwt.decode(token, { complete: true })
+    const userId = decoded.payload.uid
     try {
-      let wallet
-      console.log('userId', userId)
       if(userId != undefined){
-         wallet = await this.walletService.findOne(userId);
-         console.log('wallet=>', wallet)
-         if(wallet != undefined){
+        const wallet = await this.walletService.findOne({userId,clientId});
+         if(!wallet){
+          return {
+            code: 400,
+            error: null,
+            userExist: false,
+            message: 'User Not Found',
+          };
+         }
+
           return {
             code: 200,
             error: null,
+            userExist: true,
             message: 'Success',
             data: wallet,
           };
-         }else{
-          return {
-            code: 200,
-            error: null,
-            message: 'UserId Not Found',
-          };
-        }
+        
       }
     } catch (error) {
       return {
@@ -424,26 +433,23 @@ export class WalletController {
   }
 
   @Post('getRecWalletDetails')
-  async getRecWalletDetails(@Body() body: GetRecWalletDetailsDto,@Req() req) {
-    const publicKey = req.body.publicKey;
+  async getRecWalletDetails(@Body() body: GetRecWalletDetailsDto) {
+    const {publicKey} = body;
     try {
-      let wallet
-      console.log('PublicKey', publicKey)
       if(publicKey != undefined){
-         wallet = await this.walletService.findPubkey(publicKey);
-         console.log('wallet', wallet)
-         if(wallet != undefined){
+        const wallet = await this.walletService.findPubkey(publicKey);
+         if(!wallet){
           return {
             code: 200,
             error: null,
-            message: 'Success',
-            data: wallet,
+            message: 'PublicKey Not Found',
           };
          }else{
           return {
             code: 200,
             error: null,
-            message: 'UserId Not Found',
+            message: 'Success',
+            data: wallet,
           };
         }
       }
@@ -457,13 +463,13 @@ export class WalletController {
   }
 
   @Post('saveTransactions')
-  async saveTransactions(@Body() data) {
+  async saveTransactions(@Body() data:SaveTransactionData, @Param('id') id:string) {
     try {
-      let transactionData = await this.walletService.saveTransaction(data);
-         console.log('transactionData', transactionData)
+      let transactionData = await this.walletService.saveTransaction(data,id);
+         console.log('transactionData=>', transactionData)
          if(!transactionData){
           return {
-            code: 200,
+            code: 500,
             error: null,
             message: 'Data not saved',
           };
@@ -617,5 +623,68 @@ export class WalletController {
     }
   }
 
-}
+
+  @Post('deleteAndUpdateWalletData')
+  async deleteAndUpdateWalletData(@Body() body:deleteAndUpdateWalletData){
+   try {
+      const { pendingTransactionId, walletId, coinsToAdd } = body
+      console.log('body', body)
+      const data = await this.walletService.deleteAndUpdateWalletbalance(pendingTransactionId, walletId, coinsToAdd)
+      console.log('data', data)
+      return {
+        code: 200,
+            error: null,
+            message: 'Success',
+            data: data,
+      }
+   } catch (error) {
+    return {
+      code: 400,
+      error: error.message,
+      message: 'Error',
+    };
+   }
+  }
   
+  @Post('updateTranSactionData/:id') 
+  async updateTranSactionData(@Body() Body:UpdateTransaction,@Param('id') id:string){
+    try { 
+      const { signature } = Body
+      console.log('id=>', id)
+      console.log('signature=>', signature)
+      const data = await this.walletService.updateTransctions(
+        {
+          id: id,
+        },
+        {
+          status: ETransactionStatus.PENDING,
+          signature: signature,
+        },
+    );
+    return {
+      code: 200,
+      error: null,
+      message: 'Success',
+      data: data,
+    };
+
+    } catch (error) {
+      
+
+    }
+  }
+
+  @Delete(':id')
+  async deleteData(@Param('id') id:string){
+   try {
+       await this.walletService.deleteWallet({userid:id})
+   } catch (error) {
+    return {
+      code: 400,
+      error: error.message,
+      message: 'Error',
+    };
+   }
+  }
+
+}
