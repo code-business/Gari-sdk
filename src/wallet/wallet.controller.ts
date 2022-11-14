@@ -5,16 +5,18 @@ import {
   Body,
   Req,
   BadRequestException,
-  
+  Param
 } from '@nestjs/common';
+import { Not, In, Between, MoreThan } from 'typeorm';
 import { WalletService } from './wallet.service';
 import { RegisterAppWalletDto } from './dto/RegisterAppWalletDto,dto';
+import { GetTransctionByUser } from './dto/getTransaction.dto';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { SolanaService } from './solana/solana.service';
 import { ETransactionCase, ETransactionStatus } from 'src/common/enum/status.enum';
 import { BuyAppDto, ConnectAppWalletDto, EncodedTransactionDTO, GetRecWalletDetailsDto, GetWalletDetailsDto, SendAirdrop } from './dto/AppWallet.dto';
-import { keyBy, filter, get } from 'lodash';
+import { keyBy, filter, get, flattenDeep, uniq, } from 'lodash';
 import { amountFromBuffer } from 'src/util/amountTobuffer';
 @ApiTags('Appwallet')
 @Controller('Appwallet')
@@ -74,8 +76,10 @@ export class WalletController {
   @Post('create')
   async createWallet(@Body() body:CreateWalletDto, @Req() req) {
     try {
-      const userId = "62fe095e9dcd49be214cd819";
-      const { publicKey } = body;
+      //const userId = "62fe095e9dcd49be214cd819";
+      const userId = "632824c4846cac002005e92";
+      //const { publicKey } = body;
+      const publicKey = "GC7Y4xY3bQryLtPvQVvJLupkNVjfZZh5aWfMvAhGiJWN";
 
       const associatedAccount =
         await this.solanaService.createAssociatedAccount(publicKey);
@@ -387,7 +391,7 @@ export class WalletController {
   }
 
   @Post('getWalletDetails')
-  async getWalletDetails(@Body() body: GetWalletDetailsDto,@Req() req) {
+  async getWalletDetails(@Body() body: GetWalletDetailsDto, @Req() req) {
     const userId = req.body.userId;
     try {
       let wallet
@@ -480,4 +484,138 @@ export class WalletController {
       };
     }
   }
+  
+  @Get('getTransactionById/:id')
+  async getTransactionById( @Param('id') transactionId: string, @Req() req)
+  {
+    const userId = req.decoded._id;
+    try
+    { 
+      // first fetch whether transaction data is available
+      let transactionData: any = await this.walletService.findTransactionById({
+        where: [
+          {
+            id: transactionId,
+            toUserId: userId,
+          },
+          { fromUserId: userId, id: transactionId },
+        ],
+      });
+
+      if(!transactionData)
+      {
+        return {
+          code: 400,
+          error: 'error',
+          message: 'Transaction not found',
+        };
+      }
+
+      return {
+        code: 200,
+        error: null,
+        message: 'Success',
+        data: transactionData,
+      };
+    }
+    catch(err)
+    {
+      return {
+        code: 400,
+        error: err.message,
+        message: 'Error',
+      };
+    }
+  }
+
+  @Post('get/transactions')
+  async getTransactions(
+    @Body() getTransctionByUser: GetTransctionByUser,
+    @Req() req
+  )
+  {
+    //const userId = req.decoded._id;
+    const userId = "634fcff0b2eef1001371f837";
+    try
+    {
+      let { page, limit, sorting, filter } = getTransctionByUser;
+
+      if (Array.isArray(filter)) {
+        throw new Error('filter should be an object ');
+      }
+
+      const skip = (page - 1) * limit;
+      if (!filter)
+      { 
+        // filter field is not an array and is empty 
+        filter = {
+          status: Not(
+            In([ETransactionStatus.DRAFT]),
+          ),
+        };
+      }
+      else 
+      {
+        // add existing filter and set status which we want to exclude
+        filter = {
+          ...filter,
+          status: Not(
+            In([ETransactionStatus.DRAFT]),
+          ),
+        };
+      }
+
+      // verify request userId with input filter 
+      if ((filter.fromUserId && filter.fromUserId !== userId) || (filter.toUserId && filter.toUserId !== userId)) 
+      {
+        throw new Error('Unauthorised');
+      }
+
+      // add excluding factors in filter 
+      if ((filter.fromUserId && filter.fromUserId === userId) || (filter.toUserId && filter.toUserId === userId)) 
+      {
+        filter = { ...filter, case: Not(In[(ETransactionCase.ASSOCIATEDACCOUNT)]) };
+      }
+      
+      console.log("filter ---------------> ", filter);
+      // dont know why filter is not working here also and even in gari wallet service 
+      const transactionData: any = await this.walletService.findTransctions({
+        where: {fromUserId : "634fcff0b2eef1001371f837"},
+        order: { created_at: sorting },
+        take: limit, //limit
+        skip,
+      });
+
+      console.log("transactionData -------> ", transactionData);
+
+      // applying flattendeep and uniq method on transactionData array 
+      // if(transactionData[0]?.length)
+      // {
+      //   let transactionUserIds: any = transactionData[0].map((t) => 
+      //     [t.toUserId.toString(),
+      //     t.fromUserId.toString()]
+      //   );
+      //   console.log("transactionUserIds -------------> ", transactionUserIds);
+
+      //   transactionUserIds = flattenDeep(transactionUserIds);
+      //   console.log("transactionUserIds flatten deep -------------> ", transactionUserIds);
+      //   transactionUserIds = uniq(transactionUserIds);
+      //   console.log("transactionUserIds uniq -------------> ", transactionUserIds);
+        
+      //   transactionUserIds = transactionUserIds.filter(
+      //     (elt) => elt != 'ludo' && elt != '' && elt != 'external',
+      //   );
+      
+    }
+    catch(error)
+    {
+      return {
+        code: 400,
+        error: error.message,
+        message: 'Error ',
+      };
+    }
+  }
+
 }
+  

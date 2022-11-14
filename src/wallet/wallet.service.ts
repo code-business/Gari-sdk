@@ -359,4 +359,14 @@ export class WalletService {
     // );
     return signature;
   }
+
+  async findTransactionById(request) {
+    return this.transactions.findOne(request);
+  }
+
+  async findTransctions(request) 
+  {
+    return this.transactions.findAndCount(request);
+  }
+
 }

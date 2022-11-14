@@ -40,4 +40,16 @@ export class Transaction {
       onUpdate: 'CURRENT_TIMESTAMP(6)',
     })
     updated_at: Date;
+
+    // @Column({ default: 0, type: 'bigint' })
+    // chinagriCommission: string;
+  
+    // @Column({ default: 0, type: 'bigint' })
+    // coins: string;
+  
+    // @Column({ default: 0, type: 'bigint' })
+    // solanaFeeInLamports: string;
+  
+    @Column({ default: 0, type: 'bigint' })
+    totalTransactionAmount: string;
   }
