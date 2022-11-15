@@ -214,71 +214,48 @@ export class WalletService {
   }
 
   findOne(filter) {
-    return this.wallet.findOne( filter);
+    return this.wallet.findOne(filter);
   }
 
   findPubkey(publicKey){
     return this.wallet.findOne( {publicKey} );
   }
-  
+
   async getEncodedTransaction(
-    senderWallet,
-    receiverPublicKey,
+    senderPubkeyAta,
     receiverPubkeyAta,
+    senderPublicKey,
     coins,
-    // comission,
-  ) {
+) {
     const instructions = [];
-    console.log('senderWallet', senderWallet);
-    //if external transaction WITHOUT_ASSOCIATED_ACCOUNT
 
-    //transfer instruction
+    // will create transaction instruction.
     instructions.push(
-      Token.createTransferInstruction(
-        this.programId,
-        new web3.PublicKey(senderWallet.tokenAssociatedAccount),
-        new web3.PublicKey(receiverPubkeyAta), //associatedAddress,
-        new web3.PublicKey(senderWallet.publicKey),
-        // new web3.PublicKey(receiverPublicKey),
-        [],
-        coins,
-      ),
+        Token.createTransferInstruction(
+            this.programId,
+            new web3.PublicKey(senderPubkeyAta), //senderAssociatedAccountPubkey
+            new web3.PublicKey(receiverPubkeyAta), //receiverAssociatedAccountPubkey
+            new web3.PublicKey(senderPublicKey), //senderpubkey
+            [],
+            coins,
+        ),
     );
-    console.log('instruction', instructions);
-    //commission instruction
-    // instructions.push(
-    //   Token.createTransferInstruction(
-    //     this.programId,
-    //     new web3.PublicKey(senderWallet.tokenAssociatedAccount),
-    //     this.chingariAccountsPublickey,
-    //     new web3.PublicKey(senderWallet.publicKey),
-    //     [],
-    //     comission,
-    //   ),
-    // );
 
-    // instructions.push(
-    //   new web3.TransactionInstruction({
-    //     keys: [],
-    //     programId: new web3.PublicKey(process.env.MEMO_PROGRAM_ID),
-    //     data: Buffer.from(memo, 'utf8'),
-    //   }),
-    // );
-
+    // than using web3 will create transaction on solana blockchain
     const transaction = new web3.Transaction({
-      feePayer: new web3.PublicKey(process.env.GARI_PUBLIC_KEY),
+        feePayer: new web3.PublicKey(process.env.GARI_PUBLIC_KEY),
     }).add(...instructions);
 
-    let blockhashObj = await this.connection.getRecentBlockhash();
+    let blockhashObj = await this.connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhashObj.blockhash;
 
     let encodedTransaction = transaction.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false,
+        requireAllSignatures: false,
+        verifySignatures: false,
     });
 
-    return encodedTransaction;
-  }
+    return encodedTransaction.toString('base64');
+}
   
    find(req) {
     return this.wallet.find(req);

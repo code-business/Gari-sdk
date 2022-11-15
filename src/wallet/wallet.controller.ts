@@ -202,28 +202,23 @@ export class WalletController {
   }
   
   @Post('getEncodedTransaction')
-  async getEncodedTransaction(@Body() body: EncodedTransactionDTO) {
+  async getEncodedTransaction(@Body() body: EncodedTransactionDTO,@Headers() headers) {
     try {
-      // const { publicKey } = body;
-      // 6307b6f34a4758e0604ee57b
-      let userId = '62fe095e9dcd49be214cd819';
-      let receiverpubkey = '8qbUph3GnS92qjHRKuvqQaGHjwCMpMoR3FTdGM2VfRqS';
-      let recieverAta = 'DMJNqUdrTSFkfpkgshdoy4tu3ySwVjFB6MEy2xRAqCcQ';
-      let coins = 1;
-      // let comission = 10;
-
+      const token = headers.token
+      const decoded = jwt.decode(token, { complete: true })
+      const userId = decoded.payload.uid
+      const { senderPubkeyAta ,receiverPubkeyAta, senderPublicKey, amount } = body;
       const senderWallet = await this.walletService.findOne(userId);
-      console.log('senderWallet', senderWallet)
 
       const encodedTransaction =
         await this.walletService.getEncodedTransaction(
-          senderWallet,
-          receiverpubkey,
-          recieverAta,
-          coins,
+          senderPubkeyAta,
+          receiverPubkeyAta,
+          senderPublicKey,
+          amount,
           // comission,
         );
-      return encodedTransaction.toString('base64');
+      return encodedTransaction;
     } catch (error) {
       console.log('error', error);
     }
@@ -396,13 +391,12 @@ export class WalletController {
   @Get('getWalletDetails')
   async getWalletDetails(@Headers() headers) {
     const token = headers.token;
-    const clientId = headers.gariClientId
-    console.log('req.headers', headers)
+    const clientId = headers.gariclientId
     const decoded = jwt.decode(token, { complete: true })
     const userId = decoded.payload.uid
     try {
       if(userId != undefined){
-        const wallet = await this.walletService.findOne({userId,clientId});
+        const wallet = await this.walletService.findOne({userId});
          if(!wallet){
           return {
             code: 400,

@@ -46,11 +46,25 @@ export class SendAirdrop {
 
 export class EncodedTransactionDTO {
   @ApiProperty({
-    description: 'Reciever public key',
+    description: 'senderAssociatedPublicKey key',
     example: 'G7KfeteDuz4QgAFEpAXgng3zptkL4G8vzmqdNsBrexAK',
     required: false,
   })
-  publicKey: String;
+  senderPubkeyAta: String;
+
+  @ApiProperty({
+    description: 'recieverAssociatedPublicKey key',
+    example: 'G7KfeteDuz4QgAFEpAXgng3zptkL4G8vzmqdNsBrexAK',
+    required: false,
+  })
+  receiverPubkeyAta: String;
+
+  @ApiProperty({
+    description: 'senderPublicKey key',
+    example: 'G7KfeteDuz4QgAFEpAXgng3zptkL4G8vzmqdNsBrexAK',
+    required: false,
+  })
+  senderPublicKey: String;
 
   @ApiProperty({
     description: 'amount',
