@@ -261,14 +261,14 @@ export class WalletService {
     return this.wallet.find(req);
   }
   
-  async saveTransaction(data: any,senderWalletId:string) {
+  async startTransaction(data: any,senderWalletId:string) {
     const connection = getConnection();
     const queryRunner = connection.createQueryRunner();
     // establish real database connection using our new query runner
     await queryRunner.connect();
     await queryRunner.startTransaction();
     
-    let coinsToBeDeducted = data.coins;
+    let coinsToBeDeducted = data.coins + data.chinagriCommission;
       if(senderWalletId){
 
         let balanceupdate = await queryRunner.manager.decrement(
@@ -302,7 +302,7 @@ export class WalletService {
     return web3.Transaction.from(newEncodedBuffer);
   }
 
-  async sendNft(newconnectionTransction) {
+  async sendTransaction(newconnectionTransction) {
     newconnectionTransction.partialSign(...[this.chingariWallet]);
     const wireTransaction = newconnectionTransction.serialize({
       requireAllSignatures: true,

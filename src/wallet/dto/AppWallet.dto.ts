@@ -73,7 +73,7 @@ export class EncodedTransactionDTO {
   })
   amount: number;
 }
-export class BuyAppDto {
+export class DecodedTransactions {
   @IsNotEmpty()
   @ApiProperty({
     description: 'encoded transactions',
