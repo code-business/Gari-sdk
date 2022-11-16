@@ -18,7 +18,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { SolanaService } from './solana/solana.service';
 import { ETransactionCase, ETransactionStatus } from 'src/common/enum/status.enum';
-import { BuyAppDto, ConnectAppWalletDto, deleteAndUpdateWalletData, EncodedTransactionDTO, GetRecWalletDetailsDto, GetWalletDetailsDto, SaveTransactionData, SendAirdrop, UpdateTransaction } from './dto/AppWallet.dto';
+import { ConnectAppWalletDto, DecodedTransactions, deleteAndUpdateWalletData, EncodedTransactionDTO, GetRecWalletDetailsDto, GetWalletDetailsDto, SaveTransactionData, SendAirdrop, UpdateTransaction } from './dto/AppWallet.dto';
 import { keyBy, filter, get } from 'lodash';
 import { amountFromBuffer } from 'src/util/amountTobuffer';
 const jwt = require('jsonwebtoken')
@@ -97,7 +97,7 @@ export class WalletController {
         publicKey,
         userId,
         tokenAssociatedAccount: associatedAccount.toString(),
-        balance: 0,
+        balance: 3,
         clientId,
         appName:'ludo'
       }
@@ -210,7 +210,9 @@ export class WalletController {
       const decoded = jwt.decode(token, { complete: true })
       const userId = decoded.payload.uid
       const { senderPubkeyAta ,receiverPubkeyAta, senderPublicKey, amount } = body;
-      const senderWallet = await this.walletService.findOne(userId);
+
+      // const senderWallet = await this.walletService.findOne(userId);
+      // console.log('senderWallet', senderWallet)
 
       const encodedTransaction =
         await this.walletService.getEncodedTransaction(
@@ -218,7 +220,6 @@ export class WalletController {
           receiverPubkeyAta,
           senderPublicKey,
           amount,
-          // comission,
         );
       return encodedTransaction;
     } catch (error) {
@@ -227,33 +228,20 @@ export class WalletController {
   }
 
   @Post('decodeEncodedTransaction')
-  async decodeEncodedTransaction(@Body() body: BuyAppDto, @Req() req) {
+  async decodeEncodedTransaction(@Body() body: DecodedTransactions, @Req() req,@Headers() header) {
     try {
-      // let userId = req.decoded._id;
+      const token = header.token
+      const decoded = jwt.decode(token, { complete: true })
+      const userId = decoded.payload.uid
+      // let userId = 600;
       const { encodedTransaction } = body;
-      console.log('encodedTransaction=>', encodedTransaction)
       const decodedTransction =
         this.walletService.getDecodedTransction1(encodedTransaction);
+      console.log('decodedTransction', decodedTransction)
+     const senderWallet = await this.walletService.find({
+      userId,
+    });
 
-        console.log('decodedTransction', decodedTransction)
-        const signature2 = await this.walletService
-        .sendNft(decodedTransction)
-        .catch(async (error) => {
-          // await this.walletService.deleteAndUpdateWalletbalance(
-          //   pendingTransactionData.id,
-          //   undefined,
-          //   undefined,
-          //   undefined,
-          //   pendingTransactionData,
-          // );
-          throw new Error(error);
-        });
-      console.log('signature=>', signature2);
-
-      // return {signature2}
-
-      // console.log('decodedTransction=>', decodedTransction);
-      //  console.log(decodedTransction.instructions.length)get
       let senderWalletPublicKey = get(
         filter(decodedTransction.instructions[0].keys, function (elt) {
           // console.log(
@@ -288,12 +276,13 @@ export class WalletController {
           return (
             !elt.isSigner &&
             elt.isWritable &&
-            elt.pubkey.toString() != senderWalletPublicKey
+            elt.pubkey.toString() != senderWallet[0].tokenAssociatedAccount.toString()
           );
         }),
         '[0].pubkey',
         undefined,
       );
+
       console.log(
         'receiverWalletAssociatedPublickey',
         receiverWalletAssociatedPublickey.toString(),
@@ -306,6 +295,7 @@ export class WalletController {
       const walletData = await this.walletService.find({
         tokenAssociatedAccount: receiverWalletAssociatedPublickey.toString(),
       });
+      console.log('walletData', walletData)
 
       if (!walletData) {
         return {
@@ -315,14 +305,13 @@ export class WalletController {
         };
       }
 
-      // const memo = get(decodedTransction, 'instructions[0].data', undefined);
       const amountBuffer = get(
         decodedTransction,
-        'instructions[1].data',
+        'instructions[0].data',
         undefined,
       );
       const amount = amountFromBuffer(amountBuffer);
-
+      console.log('amount', amount)
       if (!amountBuffer) {
         throw new Error('Amount is required.');
       }
@@ -334,22 +323,22 @@ export class WalletController {
       // console.log('memoDecrypt', memoDecrypt);
       let transaction: any = {
         status: ETransactionStatus.DRAFT,
-        case: ETransactionCase.AIRDROP,
+        case: ETransactionCase.TRANSACTION,
         coins: amount,
         totalTransactionAmount: amount,
         fromPublicKey: senderWalletPublicKey.toString(),
-        toPublicKey: receiverWalletAssociatedPublickey.toString(),
-        fromUserId: 'chingari',
+        toPublicKey:walletData[0].publicKey.toString(),
+        fromUserId: userId,
         toUserId: walletData[0].userId,
         chinagriCommission: 0,
         // meta: memoDecrypt,
       };
       console.log('transaction', transaction);
 
-      await this.walletService.saveTransaction(transaction,walletData[0].id);
+     const pendingTransactionData = await this.walletService.startTransaction(transaction,walletData[0].id);
 
       const signature = await this.walletService
-        .sendNft(decodedTransction)
+        .sendTransaction(decodedTransction)
         .catch(async (error) => {
           // await this.walletService.deleteAndUpdateWalletbalance(
           //   pendingTransactionData.id,
@@ -362,24 +351,21 @@ export class WalletController {
         });
       console.log('signature=>', signature);
 
-      // await this.walletService.updateTransctions(
-      //   {
-      //     id: pendingTransactionData.id,
-      //   },
-      //   {
-      //     status: ETransactionStatus.PENDING,
-      //     signature: signature,
-      //   },
-      // );
-      const data = {
-        transactionSignature: signature,
-      };
+      await this.walletService.updateTransctions(
+        {
+          id: pendingTransactionData.id,
+        },
+        {
+          status: ETransactionStatus.PENDING,
+          signature: signature,
+        },
+      );
 
       return {
         code: 200,
         error: null,
         message: 'success',
-        data,
+        signature,
       };
     } catch (error) {
       return {
@@ -456,34 +442,34 @@ export class WalletController {
     }
   }
 
-  @Post('saveTransactions')
-  async saveTransactions(@Body() data:SaveTransactionData, @Param('id') id:string) {
-    try {
-      let transactionData = await this.walletService.saveTransaction(data,id);
-         console.log('transactionData=>', transactionData)
-         if(!transactionData){
-          return {
-            code: 500,
-            error: null,
-            message: 'Data not saved',
-          };
-         }else{
-          return {
-            code: 200,
-            error: null,
-            message: 'Success',
-            data: transactionData,
-          };
+  // @Post('saveTransactions')
+  // async saveTransactions(@Body() data:SaveTransactionData, @Param('id') id:string) {
+  //   try {
+  //     let transactionData = await this.walletService.saveTransaction(data,id);
+  //        console.log('transactionData=>', transactionData)
+  //        if(!transactionData){
+  //         return {
+  //           code: 500,
+  //           error: null,
+  //           message: 'Data not saved',
+  //         };
+  //        }else{
+  //         return {
+  //           code: 200,
+  //           error: null,
+  //           message: 'Success',
+  //           data: transactionData,
+  //         };
           
-      }
-    } catch (error) {
-      return {
-        code: 400,
-        error: error.message,
-        message: 'Error',
-      };
-    }
-  }
+  //     }
+  //   } catch (error) {
+  //     return {
+  //       code: 400,
+  //       error: error.message,
+  //       message: 'Error',
+  //     };
+  //   }
+  // }
   
   @Get('getTransactionById/:id')
   async getTransactionById( @Param('id') transactionId: string, @Req() req)
@@ -618,67 +604,67 @@ export class WalletController {
   }
 
 
-  @Post('deleteAndUpdateWalletData')
-  async deleteAndUpdateWalletData(@Body() body:deleteAndUpdateWalletData){
-   try {
-      const { pendingTransactionId, walletId, coinsToAdd } = body
-      console.log('body', body)
-      const data = await this.walletService.deleteAndUpdateWalletbalance(pendingTransactionId, walletId, coinsToAdd)
-      console.log('data', data)
-      return {
-        code: 200,
-            error: null,
-            message: 'Success',
-            data: data,
-      }
-   } catch (error) {
-    return {
-      code: 400,
-      error: error.message,
-      message: 'Error',
-    };
-   }
-  }
+  // @Post('deleteAndUpdateWalletData')
+  // async deleteAndUpdateWalletData(@Body() body:deleteAndUpdateWalletData){
+  //  try {
+  //     const { pendingTransactionId, walletId, coinsToAdd } = body
+  //     console.log('body', body)
+  //     const data = await this.walletService.deleteAndUpdateWalletbalance(pendingTransactionId, walletId, coinsToAdd)
+  //     console.log('data', data)
+  //     return {
+  //       code: 200,
+  //           error: null,
+  //           message: 'Success',
+  //           data: data,
+  //     }
+  //  } catch (error) {
+  //   return {
+  //     code: 400,
+  //     error: error.message,
+  //     message: 'Error',
+  //   };
+  //  }
+  // }
   
-  @Post('updateTranSactionData/:id') 
-  async updateTranSactionData(@Body() Body:UpdateTransaction,@Param('id') id:string){
-    try { 
-      const { signature } = Body
-      console.log('id=>', id)
-      console.log('signature=>', signature)
-      const data = await this.walletService.updateTransctions(
-        {
-          id: id,
-        },
-        {
-          status: ETransactionStatus.PENDING,
-          signature: signature,
-        },
-    );
-    return {
-      code: 200,
-      error: null,
-      message: 'Success',
-      data: data,
-    };
+  // @Post('updateTranSactionData/:id') 
+  // async updateTranSactionData(@Body() Body:UpdateTransaction,@Param('id') id:string){
+  //   try { 
+  //     const { signature } = Body
+  //     console.log('id=>', id)
+  //     console.log('signature=>', signature)
+  //     const data = await this.walletService.updateTransctions(
+  //       {
+  //         id: id,
+  //       },
+  //       {
+  //         status: ETransactionStatus.PENDING,
+  //         signature: signature,
+  //       },
+  //   );
+  //   return {
+  //     code: 200,
+  //     error: null,
+  //     message: 'Success',
+  //     data: data,
+  //   };
 
-    } catch (error) {
+  //   } catch (error) {
       
 
     }
-  }
+  
 
-  @Delete(':id')
-  async deleteData(@Param('id') id:string){
-   try {
-       await this.walletService.deleteWallet({userid:id})
-   } catch (error) {
-    return {
-      code: 400,
-      error: error.message,
-      message: 'Error',
-    };
-   }
-  }
+  // @Delete(':id')
+  // async deleteData(@Param('id') id:string){
+  //  try {
+  //      await this.walletService.deleteWallet({userid:id})
+  //  } catch (error) {
+  //   return {
+  //     code: 400,
+  //     error: error.message,
+  //     message: 'Error',
+  //   };
+  //  }
+  // }
 
-}
+
