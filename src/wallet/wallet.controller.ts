@@ -335,18 +335,16 @@ export class WalletController {
       };
       console.log('transaction', transaction);
 
-     const pendingTransactionData = await this.walletService.startTransaction(transaction,walletData[0].id);
+     const pendingTransactionData = await this.walletService.startTransaction(transaction,senderWallet[0].id);
 
       const signature = await this.walletService
         .sendTransaction(decodedTransction)
         .catch(async (error) => {
-          // await this.walletService.deleteAndUpdateWalletbalance(
-          //   pendingTransactionData.id,
-          //   undefined,
-          //   undefined,
-          //   undefined,
-          //   pendingTransactionData,
-          // );
+          await this.walletService.deleteAndUpdateWalletbalance(
+            pendingTransactionData.id,
+            senderWallet[0].id,
+            amount,
+          );
           throw new Error(error);
         });
       console.log('signature=>', signature);
