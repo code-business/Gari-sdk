@@ -225,7 +225,6 @@ export class WalletService {
       requireAllSignatures: false,
       verifySignatures: false,
     });
-    console.log('encodedTransaction', endocdeTransction)
     const signature = await this.connection.sendRawTransaction(
       endocdeTransction,
       { skipPreflight: false },
@@ -295,7 +294,6 @@ export class WalletService {
     requireAllSignatures: false,
     verifySignatures: false,
   });
-  console.log("encodedTransaction at last ", encodedTransaction);
 
   // convert it in string
   return encodedTransaction.toString('base64');

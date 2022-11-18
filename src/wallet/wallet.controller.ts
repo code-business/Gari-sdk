@@ -79,7 +79,7 @@ export class WalletController {
         clientId,
         appName:'ludo',
         publicKey,
-        balance: 10,
+        balance: 0,
       }
       
       const newWalletData = await this.walletService.saveOnlyWalletData(walletData);
@@ -102,9 +102,13 @@ export class WalletController {
   @ApiOperation({
     summary: 'send the airdrop to  receiver public key',
   })
-  async sendAirdrop(@Body() sendAirdrop: SendAirdrop) {
-    let userId = '6307b6f34a4758e0604ee57b';
-    const { publicKey, amount } = sendAirdrop;
+  async sendAirdrop(@Headers() headers,@Body() sendAirdrop: SendAirdrop) {
+
+    const token = headers.token;
+      const decoded = jwt.decode(token, { complete: true });
+      const userId = decoded.payload.uid;
+    const { publicKey } = sendAirdrop;
+    const balance = 1;
     const associatedAccount = await this.walletService.getAssociatedAccount(
       publicKey,
     );
@@ -122,24 +126,21 @@ export class WalletController {
       associatedAccount,
       publicKey,
       isAssociatedAccount,
-      amount,
+      balance,
     );
-    let wallet;
     if (signature) {
-      wallet = await this.walletService.updateWallet(
+   await this.walletService.updateWallet(
         userId,
         associatedAccount,
-        amount,
+        balance,
       );
     }
-
-    const data = { signature };
 
     return {
       code: 200,
       error: null,
       message: 'Success',
-      data: data,
+      signature,
     };
   }
 
