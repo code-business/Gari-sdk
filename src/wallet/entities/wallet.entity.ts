@@ -18,7 +18,7 @@ import {
     userId: string;
   
     @Column({
-      nullable: false,
+      nullable: true,
     })
     clientId: string;
   
@@ -31,7 +31,8 @@ import {
     @Column({ unique: true, nullable: false })
     publicKey: string;
   
-    @Column({ unique: true, nullable: false })
+    // since we are not creating tokenAssociatedAccount for new ludo user so initially nullable : true
+    @Column({ unique: true, nullable: true })
     tokenAssociatedAccount: string;
   
     @Column({ nullable: true })

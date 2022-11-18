@@ -28,17 +28,18 @@ const jwt = require('jsonwebtoken')
 export class WalletController {
   constructor(
     private readonly walletService: WalletService,
-    private readonly solanaService: SolanaService,
+    //private readonly solanaService: SolanaService,
   ) {}
 
+  // for registering appWallet(ludo) i.e client of chingari
   @Post('register-wallet')
   async registerWallet(@Body() registerAppWalletDto: RegisterAppWalletDto) {
     try {
       let data = {
         ...registerAppWalletDto,
       };
+     
       const wallet = await this.walletService.createWallet(data);
-      console.log('wallet', wallet);
       return {
         code: 200,
         error: null,
@@ -78,85 +79,123 @@ export class WalletController {
     }
   }
 
-  @Post('create')
-  async createWallet(@Body() body:CreateWalletDto,@Headers() headers,@Req() req) {
-    try {
-      const token = headers.token
-      const clientId = headers.gariclientid
+  // saves new ludo user wallet without its tokenAssociatedAccount
+  @Post('newUserWallet')
+  async newUserSaveWallet(@Headers() headers, @Body() body:CreateWalletDto)
+  {
+    try
+    {
+      // extract userId
+      const token = headers.token;
+      const decoded = jwt.decode(token, { complete: true });
+      const userId = decoded.payload.uid;
 
-      const { publicKey } = body;
-      const decoded = jwt.decode(token, { complete: true })
-      const userId = decoded.payload.uid
+      // publicKey : created during web3Auth initialization
+      // clientId : ludo clientId
+      const clientId = headers.gariclientid;
+      const {publicKey} = body;
 
-      const associatedAccount =
-        await this.solanaService.createAssociatedAccount(publicKey);
-      
-        let gariLamports = 1;
-      
       const walletData = {
-        publicKey,
         userId,
-        tokenAssociatedAccount: associatedAccount.toString(),
-        balance: 3,
         clientId,
-        appName:'ludo'
+        appName:'ludo',
+        publicKey,
+        balance: 10,
       }
 
-      const draftTransaction = await this.walletService.walletDbTRansaction(walletData,
-        {
-          fromUserId: "chingari",
-          toUserId: userId,
-          status: ETransactionStatus.DRAFT,
-          case:'transaction',
-          fromPublicKey: process.env.GARI_PUBLIC_KEY,
-          toPublicKey: publicKey,
-          coins: gariLamports,
-          chinagriCommission: 0,
-          solanaFeeInLamports: 0,
-          totalTransactionAmount: gariLamports,
-       });
-       console.log('associatedAccount', associatedAccount)
-      const isAssociatedAccount = false
-
-      const signature = await this.walletService.assocaiatedAccountTransaction(associatedAccount, publicKey,isAssociatedAccount,
-        walletData.balance)
-        .catch(async (error) => {
-          this.walletService.deleteWallet({
-            userId,
-          })
-          console.log(
-            JSON.stringify({
-              message: "gfhjvjv",
-              error: `${error}`
-            })
-          );
-          
-          console.log("Create Wallet Failed");
-          throw new Error('Create Wallet Failed');
-          
-        })  
-        console.log('signature', signature)
-        await this.walletService.updateTransctions(
-          {
-            id: draftTransaction.id,
-          },
-          {
-            status: ETransactionStatus.PENDING,
-            signature: signature,
-          },
-      );
-      
-      console.log("done");
-      return {
-        signature,
-        walletData
-      }
-
-    } catch (error) {
-      console.log(error);
-      
+      const newWalletData = await this.walletService.saveOnlyWalletData(walletData);
+      return newWalletData;
+      // return {
+      //   code: 200,
+      //   error: null,
+      //   message: 'Success',
+      //   newWalletData,
+      // };
+    }
+    catch(error)
+    {
+      console.log("error in newUserSaveWallet in SDK backend api ", error);
     }
   }
+
+  // @Post('create')
+  // async createWallet(@Body() body:CreateWalletDto,@Headers() headers,@Req() req) {
+  //   try {
+  //     const token = headers.token
+  //     const clientId = headers.gariclientid
+
+  //     const { publicKey } = body;
+  //     const decoded = jwt.decode(token, { complete: true })
+  //     const userId = decoded.payload.uid
+
+  //     // const associatedAccount =
+  //     //   await this.solanaService.createAssociatedAccount(publicKey);
+  //     // tokenAssociatedAccount: associatedAccount.toString(),
+      
+  //     let gariLamports = 1;
+      
+  //     const walletData = {
+  //       publicKey,
+  //       userId,
+  //       balance: 100,
+  //       clientId,
+  //       appName:'ludo'
+  //     }
+
+  //     await this.walletService.walletDbTRansaction(walletData);
+  //     console.log("walletDta -----------> ", walletData);
+  //     //const draftTransaction = await this.walletService.walletDbTRansaction(walletData)
+  //     //   {
+  //     //     fromUserId: "chingari",
+  //     //     toUserId: userId,
+  //     //     status: ETransactionStatus.DRAFT,
+  //     //     case:'transaction',
+  //     //     fromPublicKey: process.env.GARI_PUBLIC_KEY,
+  //     //     toPublicKey: publicKey,
+  //     //     coins: gariLamports,
+  //     //     chinagriCommission: 0,
+  //     //     solanaFeeInLamports: 0,
+  //     //     totalTransactionAmount: gariLamports,
+  //     //  });
+  //     // const isAssociatedAccount = false
+
+  //     // const signature = await this.walletService.assocaiatedAccountTransaction(associatedAccount, publicKey,isAssociatedAccount,
+  //     //   walletData.balance)
+  //     //   .catch(async (error) => {
+  //     //     this.walletService.deleteWallet({
+  //     //       userId,
+  //     //     })
+  //     //     console.log(
+  //     //       JSON.stringify({
+  //     //         message: "gfhjvjv",
+  //     //         error: `${error}`
+  //     //       })
+  //     //     );
+          
+  //     //     console.log("Create Wallet Failed");
+  //     //     throw new Error('Create Wallet Failed');
+          
+  //     //   })  
+  //     //   console.log('signature', signature)
+  //     //   await this.walletService.updateTransctions(
+  //     //     {
+  //     //       id: draftTransaction.id,
+  //     //     },
+  //     //     {
+  //     //       status: ETransactionStatus.PENDING,
+  //     //       signature: signature,
+  //     //     },
+  //     // );
+  
+  //     return {
+  //       walletData
+  //     }
+
+  //   } catch (error) {
+  //     console.log(error);
+      
+  //   }
+  // }
   
   @Post('/airdrop')
   @ApiOperation({
@@ -202,48 +241,86 @@ export class WalletController {
       data: data,
     };
   }
-  
+
   @Post('getEncodedTransaction')
-  async getEncodedTransaction(@Body() body: EncodedTransactionDTO,@Headers() headers) {
-    try {
-      const token = headers.token
-      const decoded = jwt.decode(token, { complete: true })
-      const userId = decoded.payload.uid
-      const { senderPubkeyAta ,receiverPubkeyAta, senderPublicKey, amount } = body;
+  async getEncodedTransaction(@Headers() headers, @Body() body : EncodedTransactionDTO)
+  {
+    try
+    {
+      const { receiverPublicKey, amount } = body;
 
-      // const senderWallet = await this.walletService.findOne(userId);
-      // console.log('senderWallet', senderWallet)
+      // extract sender userid 
+      const senderJwtToken = headers.token;
+      const decoded = jwt.decode(senderJwtToken, { complete: true });
+      const userId = decoded.payload.uid;
+      // const userId = "54321";
 
-      const encodedTransaction =
-        await this.walletService.getEncodedTransaction(
-          senderPubkeyAta,
-          receiverPubkeyAta,
-          senderPublicKey,
-          amount,
-        );
+      // fetch sender wallet details from SDK database
+      const senderWalletDetails = await this.walletService.findOne({userId});
+      const senderPublicKey = senderWalletDetails.publicKey;
+      const senderTokenAssociatedAccount = senderWalletDetails.tokenAssociatedAccount;
+      
+      // if sender doesnt have sufficient amount to transfer then transaction cant happen
+      // todo : check for commission
+      // if(+senderWalletDetails.balance <= amount )
+      // {
+      //   throw new Error;
+      // }
+
+      // fetch receiverTokenAssociatedAccount from web3 method
+      let receiverTokenAssociatedAccount : any = await this.walletService.getAssociatedAccount(receiverPublicKey);
+    
+      // verify whether its associatedAccount is present or not
+      const accountInfo = await this.walletService.getAccountInfo( receiverTokenAssociatedAccount.toString() );
+      let isAssociatedAccountOfReceiver = true;
+
+      if (!accountInfo.value) {
+        isAssociatedAccountOfReceiver = false;
+      }
+
+      // save associatedAccount of receiver
+      await this.walletService.updateAssociatedAcc(receiverPublicKey, receiverTokenAssociatedAccount)
+
+      console.log("isAssociatedAccountOfReceiver ", isAssociatedAccountOfReceiver );
+      // create encodedTransaction and send
+      const encodedTransaction = await this.walletService.getEncodedTransaction(
+        senderPublicKey,
+        senderTokenAssociatedAccount,
+        receiverPublicKey,
+        receiverTokenAssociatedAccount,
+        amount,
+        isAssociatedAccountOfReceiver
+      );
+      
+      console.log("enocdedTransaction send to sdk frontend", encodedTransaction);
       return encodedTransaction;
-    } catch (error) {
-      console.log('error', error);
+    }
+    catch(error)
+    {
+      
+      console.log('error in getEncodedTransaction api in SDK backend', error);
     }
   }
 
+  // only decodes if new tokenAssociatedAccount is created
   @Post('decodeEncodedTransaction')
-  async decodeEncodedTransaction(@Body() body: DecodedTransactions, @Req() req,@Headers() header) {
+  async decodeEncodedTransaction(@Headers() header, @Body() body: DecodedTransactions) {
     try {
-      const token = header.token
-      const decoded = jwt.decode(token, { complete: true })
-      const userId = decoded.payload.uid
-      // let userId = 600;
+      const gariClientId = header.gariClientId;
       const { encodedTransaction } = body;
-      const decodedTransction =
-        this.walletService.getDecodedTransction1(encodedTransaction);
-      console.log('decodedTransction', decodedTransction)
-     const senderWallet = await this.walletService.find({
-      userId,
-    });
 
+      // extract senders(ludo user) userId
+      const token = header.token;
+      const decoded = jwt.decode(token, { complete: true });
+      const userId = decoded.payload.uid;
+    
+      // decodedTransaction just returns instructions containing all information about transactions
+      const decodedTransction = this.walletService.getAllTransctionInfo(encodedTransaction);
+
+      // fetch sender wallet details from SDK databse
+      const senderWallet = await this.walletService.find({ userId});
       let senderWalletPublicKey = get(
-        filter(decodedTransction.instructions[0].keys, function (elt) {
+        filter(decodedTransction.instructions[1].keys, function (elt) {
           // console.log(
           //   'elt',
           //   elt.isSigner,
@@ -251,7 +328,7 @@ export class WalletController {
           //   elt.pubkey.toString(),
           // );
           return (
-            elt.isSigner &&
+            elt.isSigner &&  
             !elt.isWritable &&
             elt.pubkey.toString() != process.env.GARI_ASSOCIATED_ACCOUNT
           );
@@ -259,14 +336,15 @@ export class WalletController {
         '[0].pubkey',
         undefined,
       );
-      console.log('senderWalletPublicKey', senderWalletPublicKey.toString());
+      // senderpublickey isSigner is true and isWritable is false
 
+      // if senderPublicKey not found throw error
       if (!senderWalletPublicKey) {
-        throw new BadRequestException('Invalid sender Wallet details');
+        throw new BadRequestException('Invalid sender Wallet details in SDK backend decodeEncodedTransaction api');
       }
 
       let receiverWalletAssociatedPublickey = get(
-        filter(decodedTransction.instructions[0].keys, function (elt) {
+        filter(decodedTransction.instructions[1].keys, function (elt) {
           // console.log(
           //   'elt',
           //   elt.isSigner,
@@ -274,7 +352,7 @@ export class WalletController {
           //   elt.pubkey.toString(),
           // );
           return (
-            !elt.isSigner &&
+            !elt.isSigner &&  
             elt.isWritable &&
             elt.pubkey.toString() != senderWallet[0].tokenAssociatedAccount.toString()
           );
@@ -283,11 +361,7 @@ export class WalletController {
         undefined,
       );
 
-      console.log(
-        'receiverWalletAssociatedPublickey',
-        receiverWalletAssociatedPublickey.toString(),
-      );
-
+      // if receiverPublicKey not found throw error
       if (!receiverWalletAssociatedPublickey) {
         throw new BadRequestException('Invalid receiver Wallet details');
       }
@@ -295,7 +369,6 @@ export class WalletController {
       const walletData = await this.walletService.find({
         tokenAssociatedAccount: receiverWalletAssociatedPublickey.toString(),
       });
-      console.log('walletData', walletData)
 
       if (!walletData) {
         return {
@@ -307,11 +380,11 @@ export class WalletController {
 
       const amountBuffer = get(
         decodedTransction,
-        'instructions[0].data',
+        'instructions[1].data',
         undefined,
       );
       const amount = amountFromBuffer(amountBuffer);
-      console.log('amount', amount)
+
       if (!amountBuffer) {
         throw new Error('Amount is required.');
       }
@@ -330,18 +403,19 @@ export class WalletController {
         toPublicKey:walletData[0].publicKey.toString(),
         fromUserId: userId,
         toUserId: walletData[0].userId,
-        chinagriCommission: 0,
+        chinagriCommission: 0, // will be dynamic
         // meta: memoDecrypt,
       };
       console.log('transaction', transaction);
 
-     const pendingTransactionData = await this.walletService.startTransaction(transaction,senderWallet[0].id);
-
+      // draft transaction 
+      // after getting transaction signature status will be updated to pending
+      const draftTransactionData = await this.walletService.startTransaction(transaction, senderWallet[0].id);
       const signature = await this.walletService
         .sendTransaction(decodedTransction)
         .catch(async (error) => {
           await this.walletService.deleteAndUpdateWalletbalance(
-            pendingTransactionData.id,
+            draftTransactionData.id,
             senderWallet[0].id,
             amount,
           );
@@ -349,9 +423,10 @@ export class WalletController {
         });
       console.log('signature=>', signature);
 
+      // update transaction status from draft to pending
       await this.walletService.updateTransctions(
         {
-          id: pendingTransactionData.id,
+          id: draftTransactionData.id,
         },
         {
           status: ETransactionStatus.PENDING,
@@ -411,7 +486,7 @@ export class WalletController {
   }
 
   @Post('getRecWalletDetails')
-  async getRecWalletDetails(@Body() body: GetRecWalletDetailsDto) {
+  async getReceiverWalletDetails(@Body() body: GetRecWalletDetailsDto) {
     const {publicKey} = body;
     try {
       if(publicKey != undefined){
@@ -424,6 +499,7 @@ export class WalletController {
           };
          }else{
           return {
+
             code: 200,
             error: null,
             message: 'Success',
@@ -600,69 +676,6 @@ export class WalletController {
       };
     }
   }
-
-
-  // @Post('deleteAndUpdateWalletData')
-  // async deleteAndUpdateWalletData(@Body() body:deleteAndUpdateWalletData){
-  //  try {
-  //     const { pendingTransactionId, walletId, coinsToAdd } = body
-  //     console.log('body', body)
-  //     const data = await this.walletService.deleteAndUpdateWalletbalance(pendingTransactionId, walletId, coinsToAdd)
-  //     console.log('data', data)
-  //     return {
-  //       code: 200,
-  //           error: null,
-  //           message: 'Success',
-  //           data: data,
-  //     }
-  //  } catch (error) {
-  //   return {
-  //     code: 400,
-  //     error: error.message,
-  //     message: 'Error',
-  //   };
-  //  }
-  // }
   
-  // @Post('updateTranSactionData/:id') 
-  // async updateTranSactionData(@Body() Body:UpdateTransaction,@Param('id') id:string){
-  //   try { 
-  //     const { signature } = Body
-  //     console.log('id=>', id)
-  //     console.log('signature=>', signature)
-  //     const data = await this.walletService.updateTransctions(
-  //       {
-  //         id: id,
-  //       },
-  //       {
-  //         status: ETransactionStatus.PENDING,
-  //         signature: signature,
-  //       },
-  //   );
-  //   return {
-  //     code: 200,
-  //     error: null,
-  //     message: 'Success',
-  //     data: data,
-  //   };
-
-  //   } catch (error) {
-      
-
-    }
-  
-
-  // @Delete(':id')
-  // async deleteData(@Param('id') id:string){
-  //  try {
-  //      await this.walletService.deleteWallet({userid:id})
-  //  } catch (error) {
-  //   return {
-  //     code: 400,
-  //     error: error.message,
-  //     message: 'Error',
-  //   };
-  //  }
-  // }
-
+}
 

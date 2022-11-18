@@ -20,8 +20,8 @@ export class RegisterAppWalletDto {
   // @IsNotEmpty()
   // @ApiProperty({
   //   required: true,
-  //   description: 'Backup encrepted private key of user',
+  //   description: 'clientId of ludo',
   //   example: '',
   // })
-  // packageName: String;
+  // clientId: String;
 }
