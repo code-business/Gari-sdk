@@ -56,29 +56,6 @@ export class WalletController {
     }
   }
   
-  @Post('connect-wallet')
-  async create(@Body() connectAppWalletDto: ConnectAppWalletDto, @Req() req) {
-    try {
-      let data = {
-        ...connectAppWalletDto,
-        tokenAssociatedAccount: 'null',
-      };
-      const wallet = await this.walletService.connectWallet(data);
-      console.log('wallet', wallet);
-      return {
-        code: 200,
-        error: null,
-        message: 'Success',
-        data: wallet,
-      };
-    } catch (error) {
-      return {
-        code: 400,
-        error: error.message,
-        message: 'Error',
-      };
-    }
-  }
 
   // saves new ludo user wallet without its tokenAssociatedAccount
   @Post('newUserWallet')
@@ -86,6 +63,7 @@ export class WalletController {
   {
     try
     {
+
       // extract userId
       const token = headers.token;
       const decoded = jwt.decode(token, { complete: true });
@@ -116,87 +94,9 @@ export class WalletController {
     catch(error)
     {
       console.log("error in newUserSaveWallet in SDK backend api ", error);
+      return new Error(error)
     }
   }
-
-  // @Post('create')
-  // async createWallet(@Body() body:CreateWalletDto,@Headers() headers,@Req() req) {
-  //   try {
-  //     const token = headers.token
-  //     const clientId = headers.gariclientid
-
-  //     const { publicKey } = body;
-  //     const decoded = jwt.decode(token, { complete: true })
-  //     const userId = decoded.payload.uid
-
-  //     // const associatedAccount =
-  //     //   await this.solanaService.createAssociatedAccount(publicKey);
-  //     // tokenAssociatedAccount: associatedAccount.toString(),
-      
-  //     let gariLamports = 1;
-      
-  //     const walletData = {
-  //       publicKey,
-  //       userId,
-  //       balance: 100,
-  //       clientId,
-  //       appName:'ludo'
-  //     }
-
-  //     await this.walletService.walletDbTRansaction(walletData);
-  //     console.log("walletDta -----------> ", walletData);
-  //     //const draftTransaction = await this.walletService.walletDbTRansaction(walletData)
-  //     //   {
-  //     //     fromUserId: "chingari",
-  //     //     toUserId: userId,
-  //     //     status: ETransactionStatus.DRAFT,
-  //     //     case:'transaction',
-  //     //     fromPublicKey: process.env.GARI_PUBLIC_KEY,
-  //     //     toPublicKey: publicKey,
-  //     //     coins: gariLamports,
-  //     //     chinagriCommission: 0,
-  //     //     solanaFeeInLamports: 0,
-  //     //     totalTransactionAmount: gariLamports,
-  //     //  });
-  //     // const isAssociatedAccount = false
-
-  //     // const signature = await this.walletService.assocaiatedAccountTransaction(associatedAccount, publicKey,isAssociatedAccount,
-  //     //   walletData.balance)
-  //     //   .catch(async (error) => {
-  //     //     this.walletService.deleteWallet({
-  //     //       userId,
-  //     //     })
-  //     //     console.log(
-  //     //       JSON.stringify({
-  //     //         message: "gfhjvjv",
-  //     //         error: `${error}`
-  //     //       })
-  //     //     );
-          
-  //     //     console.log("Create Wallet Failed");
-  //     //     throw new Error('Create Wallet Failed');
-          
-  //     //   })  
-  //     //   console.log('signature', signature)
-  //     //   await this.walletService.updateTransctions(
-  //     //     {
-  //     //       id: draftTransaction.id,
-  //     //     },
-  //     //     {
-  //     //       status: ETransactionStatus.PENDING,
-  //     //       signature: signature,
-  //     //     },
-  //     // );
-  
-  //     return {
-  //       walletData
-  //     }
-
-  //   } catch (error) {
-  //     console.log(error);
-      
-  //   }
-  // }
   
   @Post('/airdrop')
   @ApiOperation({
