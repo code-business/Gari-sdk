@@ -29,8 +29,9 @@ export class WalletController {
   constructor(
     private readonly walletService: WalletService,
     //private readonly solanaService: SolanaService,
-  ) {}
-
+  ) {
+  }
+  
   // for registering appWallet(ludo) i.e client of chingari
   @Post('register-wallet')
   async registerWallet(@Body() registerAppWalletDto: RegisterAppWalletDto) {
@@ -102,15 +103,15 @@ export class WalletController {
         publicKey,
         balance: 10,
       }
-
+      
       const newWalletData = await this.walletService.saveOnlyWalletData(walletData);
-      return newWalletData;
-      // return {
-      //   code: 200,
-      //   error: null,
-      //   message: 'Success',
-      //   newWalletData,
-      // };
+      // return newWalletData;
+      return {
+        code: 200,
+        error: null,
+        message: 'Success',
+        newWalletData,
+      };
     }
     catch(error)
     {
@@ -272,8 +273,8 @@ export class WalletController {
     
       // verify whether its associatedAccount is present or not
       const accountInfo = await this.walletService.getAccountInfo( receiverTokenAssociatedAccount.toString() );
-      let isAssociatedAccountOfReceiver = true;
-
+       
+      let isAssociatedAccountOfReceiver = true
       if (!accountInfo.value) {
         isAssociatedAccountOfReceiver = false;
       }
@@ -281,7 +282,6 @@ export class WalletController {
       // save associatedAccount of receiver
       await this.walletService.updateAssociatedAcc(receiverPublicKey, receiverTokenAssociatedAccount)
 
-      console.log("isAssociatedAccountOfReceiver ", isAssociatedAccountOfReceiver );
       // create encodedTransaction and send
       const encodedTransaction = await this.walletService.getEncodedTransaction(
         senderPublicKey,
@@ -306,7 +306,6 @@ export class WalletController {
   @Post('decodeEncodedTransaction')
   async decodeEncodedTransaction(@Headers() header, @Body() body: DecodedTransactions) {
     try {
-      const gariClientId = header.gariClientId;
       const { encodedTransaction } = body;
 
       // extract senders(ludo user) userId
@@ -318,15 +317,13 @@ export class WalletController {
       const decodedTransction = this.walletService.getAllTransctionInfo(encodedTransaction);
 
       // fetch sender wallet details from SDK databse
+  
       const senderWallet = await this.walletService.find({ userId});
+
+      const instructionIndex = decodedTransction.instructions.length > 1 ? 1 : 0
+
       let senderWalletPublicKey = get(
-        filter(decodedTransction.instructions[1].keys, function (elt) {
-          // console.log(
-          //   'elt',
-          //   elt.isSigner,
-          //   elt.isWritable,
-          //   elt.pubkey.toString(),
-          // );
+        filter(decodedTransction.instructions[instructionIndex].keys, function (elt) {
           return (
             elt.isSigner &&  
             !elt.isWritable &&
@@ -344,7 +341,7 @@ export class WalletController {
       }
 
       let receiverWalletAssociatedPublickey = get(
-        filter(decodedTransction.instructions[1].keys, function (elt) {
+        filter(decodedTransction.instructions[instructionIndex].keys, function (elt) {
           // console.log(
           //   'elt',
           //   elt.isSigner,
@@ -380,7 +377,7 @@ export class WalletController {
 
       const amountBuffer = get(
         decodedTransction,
-        'instructions[1].data',
+        `instructions[${instructionIndex}].data`,
         undefined,
       );
       const amount = amountFromBuffer(amountBuffer);
