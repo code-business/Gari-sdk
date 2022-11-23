@@ -40,7 +40,7 @@ export class GetTransctionByUser {
   @ApiProperty({
     description: 'filter based on user id',
     required: false,
-    example: { fromUserId: '' },
+    example: { clientId : "b4059f4a-f32e-4aa8-8051-8945850a856f", appName : "ludo" },
     default: {},
   })
   filter: any;

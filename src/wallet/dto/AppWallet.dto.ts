@@ -35,13 +35,13 @@ export class SendAirdrop {
   })
   publicKey: String;
 
-  // @IsNotEmpty()
-  // @ApiProperty({
-  //   required: true,
-  //   description: 'public key of user',
-  //   example: '',
-  // })
-  // balance: string;
+  @IsNotEmpty()
+  @ApiProperty({
+    required: true,
+    description: 'airdrop amount decided by chingari client for giving reward to its users',
+    example: 1,
+  })
+  airdropAmount: number;
 }
 
 export class EncodedTransactionDTO {

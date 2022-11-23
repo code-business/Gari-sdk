@@ -2,10 +2,6 @@ require('dotenv/config'); // load everything from `.env` file into the `process.
 
 const {
     DB_PORT,
-    DB_USERNAME,
-    DB_PASSWORD,
-    DB_DATABASE,
-    DB_HOST,
     DB_LOCAL_HOST,
     DB_LOCAL_USERNAME,
     DB_LOCAL_PASSWORD,

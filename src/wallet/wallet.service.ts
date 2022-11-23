@@ -253,7 +253,7 @@ export class WalletService {
 
   // if reciever has no tokenAssociatedAccount, then it creates its tokenAssociatedAccount
   const receiverPublicKey = new web3.PublicKey(receiverPubKey);
-  const instructions = [];
+  const instructions = []; // transactions instructtions 
   if(!isAssociatedAccount)
   {
     instructions.push(

@@ -15,21 +15,21 @@ export class Transaction {
     status: string;
 
     @Column({
-        nullable: true,
-      })
+      nullable: true,
+    })
     case: string;
 
     @Column({ nullable: false })
     fromPublicKey: string;
   
-    @Column()
+    @Column({ nullable: false })
     toPublicKey: string;
     
-    @Column({ nullable: true })
+    @Column({ nullable: true }) // nullable : false missing
     signature: string;
 
-    // @Column({ nullable: true })
-    // totalTransactionAmount:string
+    @Column({ type: 'jsonb', nullable: true, default: {} })
+    meta: object;
   
     @CreateDateColumn({
       type: 'timestamptz',
@@ -50,9 +50,19 @@ export class Transaction {
     // @Column({ default: 0, type: 'bigint' })
     // coins: string;
   
-    // @Column({ default: 0, type: 'bigint' })
-    // solanaFeeInLamports: string;
+    @Column({ default: 0, type: 'bigint' })
+    solanaFeeInLamports: string;
   
     @Column({ default: 0, type: 'bigint' })
     totalTransactionAmount: string;
-  }
+
+    @Column({
+      nullable: false,
+    })
+    clientId: string;
+  
+    @Column({
+      nullable: false,
+    })
+    appName: string;
+}
