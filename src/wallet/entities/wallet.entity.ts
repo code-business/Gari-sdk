@@ -37,6 +37,9 @@ import {
   
     @Column({ nullable: true })
     encryptedPrivateKey: string;
+
+    @Column({ type: 'jsonb', nullable: true, default: {} })
+    meta: object;
   
     @Column({ default: 0, type: 'bigint' })
     balance: string;

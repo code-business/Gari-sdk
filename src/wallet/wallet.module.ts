@@ -9,8 +9,7 @@ import { Wallet } from './entities/wallet.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature(
-    [
-      RegisterWallet,
+    [      RegisterWallet,
       Transaction,
       Wallet
     ]
