@@ -8,7 +8,6 @@ import {
   Delete,
   Param,
   Headers,
-  
 } from '@nestjs/common';
 import { Not, In, Between, MoreThan } from 'typeorm';
 import { WalletService } from './wallet.service';
@@ -18,14 +17,15 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { SolanaService } from './solana/solana.service';
 import { ETransactionCase, ETransactionStatus } from 'src/common/enum/status.enum';
-import { ConnectAppWalletDto, DecodedTransactions, deleteAndUpdateWalletData, EncodedTransactionDTO, GetRecWalletDetailsDto, GetWalletDetailsDto, SaveTransactionData, SendAirdrop, UpdateTransaction } from './dto/AppWallet.dto';
-import { keyBy, filter, get } from 'lodash';
+import { DecodedTransactions, EncodedTransactionDTO, GetRecWalletDetailsDto, SendAirdrop } from './dto/AppWallet.dto';
+import { filter, get } from 'lodash';
 import { amountFromBuffer } from 'src/util/amountTobuffer';
 const jwt = require('jsonwebtoken')
 
 @ApiTags('Appwallet')
 @Controller('Appwallet')
 export class WalletController {
+  
   constructor(
     private readonly walletService: WalletService,
     //private readonly solanaService: SolanaService,
@@ -63,7 +63,6 @@ export class WalletController {
   {
     try
     {
-
       // extract userId
       const token = headers.token;
       const decoded = jwt.decode(token, { complete: true });
@@ -103,10 +102,10 @@ export class WalletController {
     summary: 'send the airdrop to  receiver public key',
   })
   async sendAirdrop(@Headers() headers,@Body() sendAirdrop: SendAirdrop) {
-
-    const token = headers.token;
-      const decoded = jwt.decode(token, { complete: true });
-      const userId = decoded.payload.uid;
+    try {
+      const token = headers.token;
+    const decoded = jwt.decode(token, { complete: true });
+    const userId = decoded.payload.uid;
     const { publicKey } = sendAirdrop;
     const balance = 1;
     const associatedAccount = await this.walletService.getAssociatedAccount(
@@ -135,13 +134,20 @@ export class WalletController {
         balance,
       );
     }
-
     return {
       code: 200,
       error: null,
       message: 'Success',
       signature,
     };
+    } catch (error) {
+      return {
+        code: 400,
+        error: error.message,
+        message: `Error`,
+      };
+    }
+    
   }
 
   @Post('getEncodedTransaction')
@@ -204,8 +210,8 @@ export class WalletController {
   }
 
   // only decodes if new tokenAssociatedAccount is created
-  @Post('decodeEncodedTransaction')
-  async decodeEncodedTransaction(@Headers() header, @Body() body: DecodedTransactions) {
+  @Post('startTransactions')
+  async startTransactions(@Headers() header, @Body() body: DecodedTransactions) {
     try {
       const { encodedTransaction } = body;
 
@@ -364,7 +370,6 @@ export class WalletController {
             message: 'User Not Found',
           };
          }
-
           return {
             code: 200,
             error: null,
@@ -372,13 +377,13 @@ export class WalletController {
             message: 'Success',
             data: wallet,
           };
-        
       }
     } catch (error) {
       return {
         code: 400,
         error: error.message,
-        message: 'Error',
+        userExist: false,
+        message: 'User Not Found',
       };
     }
   }
@@ -397,7 +402,6 @@ export class WalletController {
           };
          }else{
           return {
-
             code: 200,
             error: null,
             message: 'Success',
@@ -414,39 +418,12 @@ export class WalletController {
     }
   }
 
-  // @Post('saveTransactions')
-  // async saveTransactions(@Body() data:SaveTransactionData, @Param('id') id:string) {
-  //   try {
-  //     let transactionData = await this.walletService.saveTransaction(data,id);
-  //        console.log('transactionData=>', transactionData)
-  //        if(!transactionData){
-  //         return {
-  //           code: 500,
-  //           error: null,
-  //           message: 'Data not saved',
-  //         };
-  //        }else{
-  //         return {
-  //           code: 200,
-  //           error: null,
-  //           message: 'Success',
-  //           data: transactionData,
-  //         };
-          
-  //     }
-  //   } catch (error) {
-  //     return {
-  //       code: 400,
-  //       error: error.message,
-  //       message: 'Error',
-  //     };
-  //   }
-  // }
-  
   @Get('getTransactionById/:id')
-  async getTransactionById( @Param('id') transactionId: string, @Req() req)
+  async getTransactionById(@Headers() headers, @Param('id') transactionId: string, @Req() req)
   {
-    const userId = req.decoded._id;
+    const token = headers.token;
+    const decoded = jwt.decode(token, { complete: true })
+    const userId = decoded.payload.uid
     try
     { 
       // first fetch whether transaction data is available
@@ -488,15 +465,16 @@ export class WalletController {
 
   @Post('get/transactions')
   async getTransactions(
-    @Body() getTransctionByUser: GetTransctionByUser,
-    @Req() req
+    @Body() body: GetTransctionByUser,
+    @Req() req,
+    @Param('id') id: any,
   )
   {
     //const userId = req.decoded._id;
-    const userId = "634fcff0b2eef1001371f837";
+    const userId = id;
     try
     {
-      let { page, limit, sorting, filter } = getTransctionByUser;
+      let { page, limit, sorting, filter } = body;
 
       if (Array.isArray(filter)) {
         throw new Error('filter should be an object ');
@@ -524,10 +502,10 @@ export class WalletController {
       }
 
       // verify request userId with input filter 
-      if ((filter.fromUserId && filter.fromUserId !== userId) || (filter.toUserId && filter.toUserId !== userId)) 
-      {
-        throw new Error('Unauthorised');
-      }
+      // if ((filter.fromUserId && filter.fromUserId !== userId) || (filter.toUserId && filter.toUserId !== userId)) 
+      // {
+      //   throw new Error('Unauthorised');
+      // }
 
       // add excluding factors in filter 
       if ((filter.fromUserId && filter.fromUserId === userId) || (filter.toUserId && filter.toUserId === userId)) 
@@ -538,32 +516,19 @@ export class WalletController {
       console.log("filter ---------------> ", filter);
       // dont know why filter is not working here also and even in gari wallet service 
       const transactionData: any = await this.walletService.findTransctions({
-        where: {fromUserId : "634fcff0b2eef1001371f837"},
+        where: {fromUserId : id},
         order: { created_at: sorting },
         take: limit, //limit
         skip,
       });
 
       console.log("transactionData -------> ", transactionData);
-
-      // applying flattendeep and uniq method on transactionData array 
-      // if(transactionData[0]?.length)
-      // {
-      //   let transactionUserIds: any = transactionData[0].map((t) => 
-      //     [t.toUserId.toString(),
-      //     t.fromUserId.toString()]
-      //   );
-      //   console.log("transactionUserIds -------------> ", transactionUserIds);
-
-      //   transactionUserIds = flattenDeep(transactionUserIds);
-      //   console.log("transactionUserIds flatten deep -------------> ", transactionUserIds);
-      //   transactionUserIds = uniq(transactionUserIds);
-      //   console.log("transactionUserIds uniq -------------> ", transactionUserIds);
-        
-      //   transactionUserIds = transactionUserIds.filter(
-      //     (elt) => elt != 'ludo' && elt != '' && elt != 'external',
-      //   );
-      
+      return {
+        code: 200,
+        error: null,
+        message: 'success',
+        transactionData
+      };
     }
     catch(error)
     {
