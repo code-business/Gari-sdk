@@ -83,7 +83,7 @@ export class WalletController {
       const walletData = {
         userId,
         clientId,
-        appName: 'ludo', // may vary on client
+        appName: 'ludo',
         publicKey,
         balance: 0,
       };
@@ -151,14 +151,15 @@ export class WalletController {
       message: 'Success',
       signature,
     };
-  }
-  catch(error) {
-    return {
-      code: 400,
-      error: error.message,
-      message: `Error`,
-    };
-  }
+    } catch (error) {
+      return {
+        code: 400,
+        error: error.message,
+        message: `Error`,
+      };
+    }
+    
+
 
   @Post('getEncodedTransaction')
   async getEncodedTransaction(
@@ -247,8 +248,7 @@ export class WalletController {
       // fetch sender wallet details from SDK databse
       const senderWallet = await this.walletService.find({ userId });
 
-      const instructionIndex =
-        decodedTransction.instructions.length > 1 ? 1 : 0;
+      const instructionIndex = decodedTransction.instructions.length > 1 ? 1 : 0;
 
       let senderWalletPublicKey = get(
         filter(
@@ -454,11 +454,7 @@ export class WalletController {
   }
 
   @Get('getTransactionById/:id')
-  async getTransactionById(
-    @Headers() header,
-    @Param('id') transactionId: string,
-    @Req() req,
-  ) {
+  async getTransactionById(@Headers() header, @Param('id') transactionId: string, @Req() req) {
     // extract userId
     const token = header.token;
     const decoded = jwt.decode(token, { complete: true });
@@ -499,7 +495,9 @@ export class WalletController {
   }
 
   @Post('get/transactions')
-  async getTransactions(@Body() getTransctionByUser: GetTransctionByUser) {
+  async getTransactions(
+    @Body() getTransctionByUser: GetTransctionByUser
+  ) {
     try {
       // chingari registered clients will access this api with their respective ids
 
