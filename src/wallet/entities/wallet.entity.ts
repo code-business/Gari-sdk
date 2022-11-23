@@ -28,11 +28,11 @@ import {
     appName: string;
   
     // will save app publick key or userpublic key
-    @Column({ unique: true, nullable: false })
+    @Column({ nullable: false })
     publicKey: string;
   
     // since we are not creating tokenAssociatedAccount for new ludo user so initially nullable : true
-    @Column({ unique: true, nullable: true })
+    @Column({ nullable: true })
     tokenAssociatedAccount: string;
   
     @Column({ nullable: true })

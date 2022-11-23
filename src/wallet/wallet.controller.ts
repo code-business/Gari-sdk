@@ -151,7 +151,15 @@ export class WalletController {
       message: 'Success',
       signature,
     };
-  }
+    } catch (error) {
+      return {
+        code: 400,
+        error: error.message,
+        message: `Error`,
+      };
+    }
+    
+
 
   @Post('getEncodedTransaction')
   async getEncodedTransaction(
@@ -220,11 +228,8 @@ export class WalletController {
   }
 
   // only decodes if new tokenAssociatedAccount is created
-  @Post('decodeEncodedTransaction')
-  async decodeEncodedTransaction(
-    @Headers() header,
-    @Body() body: DecodedTransactions,
-  ) {
+  @Post('startTransactions')
+  async startTransactions(@Headers() header, @Body() body: DecodedTransactions) {
     try {
       const { encodedTransaction } = body;
 
@@ -407,7 +412,8 @@ export class WalletController {
       return {
         code: 400,
         error: error.message,
-        message: 'Error',
+        userExist: false,
+        message: 'User Not Found',
       };
     }
   }
