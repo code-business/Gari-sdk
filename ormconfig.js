@@ -6,6 +6,10 @@ const {
     DB_LOCAL_USERNAME,
     DB_LOCAL_PASSWORD,
     DB_LOCAL_DATABASE,
+    DB_USERNAME,
+    DB_PASSWORD,
+    DB_DATABASE,
+    DB_HOST,
 } = process.env;
 
 module.exports = [
