@@ -18,7 +18,7 @@ import {
     userId: string;
   
     @Column({
-      nullable: true,
+      nullable: false,
     })
     clientId: string;
   

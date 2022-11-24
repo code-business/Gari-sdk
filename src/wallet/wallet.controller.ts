@@ -17,7 +17,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { SolanaService } from './solana/solana.service';
 import { ETransactionCase, ETransactionStatus } from 'src/common/enum/status.enum';
-import { DecodedTransactions, EncodedTransactionDTO, GetRecWalletDetailsDto, SendAirdrop } from './dto/AppWallet.dto';
+import { DecodedTransactions, EncodedTransactionDTO, GetRecWalletDetailsDto, SendAirdropDto } from './dto/AppWallet.dto';
 import { filter, get } from 'lodash';
 import { amountFromBuffer } from 'src/util/amountTobuffer';
 const jwt = require('jsonwebtoken')
@@ -101,37 +101,57 @@ export class WalletController {
   @ApiOperation({
     summary: 'send the airdrop to  receiver public key',
   })
-  async sendAirdrop(@Headers() headers,@Body() sendAirdrop: SendAirdrop) {
+  async sendAirdrop(@Headers() headers, @Body() body: SendAirdropDto) {
     try {
-      const token = headers.token;
+    // extract userid   
+    const token = headers.token;
     const decoded = jwt.decode(token, { complete: true });
     const userId = decoded.payload.uid;
-    const { publicKey } = sendAirdrop;
-    const balance = 1;
+    console.log("headers ", headers);
+    return null;
+
+    // publickey and airdropAmount 
+    const { publicKey, airdropAmount } = body;
     const associatedAccount = await this.walletService.getAssociatedAccount(
       publicKey,
     );
     const accountInfo: any = await this.walletService.getAccountInfo(
       associatedAccount.toString(),
     );
-
     let isAssociatedAccount = true;
 
     if (!accountInfo.value) {
       isAssociatedAccount = false;
     }
 
+    // before doing actual transaction save as a draft in transaction table
+    let draftData: any = {
+      status: ETransactionStatus.DRAFT,
+      case: ETransactionCase.AIRDROP,
+      coins: airdropAmount,
+      totalTransactionAmount: airdropAmount,
+      fromPublicKey: process.env.GARI_PUBLIC_KEY,
+      toPublicKey : publicKey,
+      fromUserId: 'chingari',
+      toUserId: userId,
+      chinagriCommission: 0, // will be dynamic
+      //clientId,
+      //appName // not required
+      // meta: memoDecrypt,
+    };
+
     const signature = await this.walletService.assocaiatedAccountTransaction(
       associatedAccount,
       publicKey,
       isAssociatedAccount,
-      balance,
+      airdropAmount,
     );
+
     if (signature) {
-   await this.walletService.updateWallet(
+      await this.walletService.updateWallet(
         userId,
         associatedAccount,
-        balance,
+        airdropAmount,
       );
     }
     return {
@@ -155,25 +175,24 @@ export class WalletController {
   {
     try
     {
-      const { receiverPublicKey, amount } = body;
+      const { receiverPublicKey, amountToTransfer } = body;
 
       // extract sender userid 
-      const senderJwtToken = headers.token;
-      const decoded = jwt.decode(senderJwtToken, { complete: true });
-      const userId = decoded.payload.uid;
-      // const userId = "54321";
+      //const senderJwtToken = headers.token;
+      //const decoded = jwt.decode(senderJwtToken, { complete: true });
+      //const userId = decoded.payload.uid;
+      const userId = "54321";
 
       // fetch sender wallet details from SDK database
-      const senderWalletDetails = await this.walletService.findOne({userId});
+      const senderWalletDetails = await this.walletService.findOne({userId}); // add another argument client id
       const senderPublicKey = senderWalletDetails.publicKey;
       const senderTokenAssociatedAccount = senderWalletDetails.tokenAssociatedAccount;
       
-      // if sender doesnt have sufficient amount to transfer then transaction cant happen
-      // todo : check for commission
-      // if(+senderWalletDetails.balance <= amount )
-      // {
-      //   throw new Error;
-      // }
+      //if sender doesnt have sufficient amount to transfer then transaction cant happen
+      if(+senderWalletDetails.balance <= amountToTransfer + (+process.env.CHINGARI_COMISSION) )
+      {
+        throw new Error;
+      }
 
       // fetch receiverTokenAssociatedAccount from web3 method
       let receiverTokenAssociatedAccount : any = await this.walletService.getAssociatedAccount(receiverPublicKey);
@@ -195,7 +214,7 @@ export class WalletController {
         senderTokenAssociatedAccount,
         receiverPublicKey,
         receiverTokenAssociatedAccount,
-        amount,
+        amountToTransfer,
         isAssociatedAccountOfReceiver
       );
       
@@ -203,13 +222,17 @@ export class WalletController {
       return encodedTransaction;
     }
     catch(error)
-    {
-      
+    { 
       console.log('error in getEncodedTransaction api in SDK backend', error);
+      return {
+        code: 400,
+        error: error.message,
+        message: `Error`,
+      };
     }
   }
 
-  // only decodes if new tokenAssociatedAccount is created
+  // only decodes encoded transaction (i.e starts actual transaction )
   @Post('startTransactions')
   async startTransactions(@Headers() header, @Body() body: DecodedTransactions) {
     try {
@@ -219,12 +242,13 @@ export class WalletController {
       const token = header.token;
       const decoded = jwt.decode(token, { complete: true });
       const userId = decoded.payload.uid;
+      const appName = decoded.payload.appName;
+      const clientId = header.gariclientid;
     
-      // decodedTransaction just returns instructions containing all information about transactions
+      // getAllTransctionInfo just converts buffered encodedTransaction i.e returns all information about transactions
       const decodedTransction = this.walletService.getAllTransctionInfo(encodedTransaction);
 
       // fetch sender wallet details from SDK databse
-  
       const senderWallet = await this.walletService.find({ userId});
 
       const instructionIndex = decodedTransction.instructions.length > 1 ? 1 : 0
@@ -293,11 +317,6 @@ export class WalletController {
         throw new Error('Amount is required.');
       }
 
-      // const memoDecrypt = JSON.parse(decryptTextAES(memo.toString()));
-      // if (get(memoDecrypt, 'type', undefined) != 'nft_reward_transfer') {
-      //   throw new Error('Invalid transactions');
-      // }
-      // console.log('memoDecrypt', memoDecrypt);
       let transaction: any = {
         status: ETransactionStatus.DRAFT,
         case: ETransactionCase.TRANSACTION,
@@ -308,6 +327,8 @@ export class WalletController {
         fromUserId: userId,
         toUserId: walletData[0].userId,
         chinagriCommission: 0, // will be dynamic
+        clientId,
+        appName // not required
         // meta: memoDecrypt,
       };
       console.log('transaction', transaction);
@@ -315,6 +336,7 @@ export class WalletController {
       // draft transaction 
       // after getting transaction signature status will be updated to pending
       const draftTransactionData = await this.walletService.startTransaction(transaction, senderWallet[0].id);
+      // cron job add
       const signature = await this.walletService
         .sendTransaction(decodedTransction)
         .catch(async (error) => {

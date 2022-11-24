@@ -26,7 +26,7 @@ export class RegisterAppWalletDto {
   packageName: String;
 }
 
-export class SendAirdrop {
+export class SendAirdropDto {
   @IsNotEmpty()
   @ApiProperty({
     required: true,
@@ -35,13 +35,13 @@ export class SendAirdrop {
   })
   publicKey: String;
 
-  // @IsNotEmpty()
-  // @ApiProperty({
-  //   required: true,
-  //   description: 'public key of user',
-  //   example: '',
-  // })
-  // balance: string;
+  @IsNotEmpty()
+  @ApiProperty({
+    required: true,
+    description: 'airdrop by gari-client to its users',
+    example: 1,
+  })
+  airdropAmount: string;
 }
 
 export class EncodedTransactionDTO {
@@ -57,7 +57,7 @@ export class EncodedTransactionDTO {
     example: '100000',
     required: false,
   })
-  amount: number;
+  amountToTransfer: number;
 }
 export class DecodedTransactions {
   @IsNotEmpty()

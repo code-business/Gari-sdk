@@ -3,22 +3,17 @@ import * as web3 from '@solana/web3.js';
 import { Token } from '@solana/spl-token';
 
 import { Injectable, Inject } from '@nestjs/common';
-import {
-  Repository,
-  getConnection,
-  MoreThanOrEqual,
-} from 'typeorm';
-import {InjectRepository} from '@nestjs/typeorm'
+import { Repository, getConnection, MoreThanOrEqual } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 import { RegisterWallet } from './entities/registerWallet.entity';
 import { Wallet } from './entities/wallet.entity';
-import { Transaction } from "./entities/transaction.entity";
+import { Transaction } from './entities/transaction.entity';
 import { ETransactionStatus } from 'src/common/enum/status.enum';
 // import { transactions } from 'src/wallet/entity/transactions.entity';
 
 const crypto = require('crypto');
 @Injectable()
 export class WalletService {
-
   private SOLANA_API: string = process.env.SOLANA_API;
   private connection = new web3.Connection(this.SOLANA_API, 'confirmed');
 
@@ -36,17 +31,15 @@ export class WalletService {
   private connection1 = new web3.Connection(this.SOLANA_API, 'confirmed');
 
   constructor(
-    @InjectRepository(RegisterWallet) 
+    @InjectRepository(RegisterWallet)
     private registerWalletRepository: Repository<RegisterWallet>,
 
-    @InjectRepository(Transaction) 
+    @InjectRepository(Transaction)
     private transactions: Repository<Transaction>,
 
-    @InjectRepository(Wallet) 
-    private wallet: Repository<Wallet>
-
+    @InjectRepository(Wallet)
+    private wallet: Repository<Wallet>,
   ) {
-    
     this.ASSOCIATED_TOKEN_PROGRAM_ID = new web3.PublicKey(
       process.env.GARI_ASSOCIATED_TOKEN_PROGRAM_ID,
     );
@@ -56,21 +49,23 @@ export class WalletService {
     this.myMint = new web3.PublicKey(process.env.GARI_TOKEN_ADDRESS);
 
     this.AIRDROP_FEEPAYER_PRIVATE_KEY = new Uint8Array(
-      process.env.AIRDROP_FEEPAYER_PRIVATE_KEY.split(',').map((e: any) => e * 1),
+      process.env.AIRDROP_FEEPAYER_PRIVATE_KEY.split(',').map(
+        (e: any) => e * 1,
+      ),
     );
 
     this.chingariWallet = web3.Keypair.fromSecretKey(
-    this.AIRDROP_FEEPAYER_PRIVATE_KEY,
+      this.AIRDROP_FEEPAYER_PRIVATE_KEY,
     );
 
     this.chingariAccountsPublickey = new web3.PublicKey(
       process.env.AIRDROP_FEEPAYER_ASSOCIATED_ACCOUNT,
     );
   }
- 
+
   async createWallet(wallet) {
     let data = await this.wallet.save({
-      ...wallet
+      ...wallet,
     });
     return data;
   }
@@ -80,7 +75,7 @@ export class WalletService {
     return data;
   }
 
-  // saves walletData into SDK database using queryRunner 
+  // saves walletData into SDK database using queryRunner
   async saveOnlyWalletData(walletData) {
     // get queryRunner connection
     const connection = getConnection();
@@ -91,10 +86,12 @@ export class WalletService {
     await queryRunner.startTransaction();
     let queryWalletData;
     try {
-      queryWalletData = await queryRunner.manager.save(Wallet, { ...walletData });
+      queryWalletData = await queryRunner.manager.save(Wallet, {
+        ...walletData,
+      });
       await queryRunner.commitTransaction();
     } catch (error) {
-      console.log("error in walletService in saveonlywalletdata function ");
+      console.log('error in walletService in saveonlywalletdata function ');
       await queryRunner.rollbackTransaction();
       throw error;
     } finally {
@@ -119,17 +116,21 @@ export class WalletService {
     try {
       // this gives publickey which web3auth stores internally it is in big N
       const publicKeyOnWeb3 = new web3.PublicKey(publicKey);
-      
+
       // this gives associatedAddress_Of_PublicKeyOnWeb3 on solana. also it is in bigN
-      const associatedAddress_Of_PublicKeyOnWeb3 = await Token.getAssociatedTokenAddress(
-        this.ASSOCIATED_TOKEN_PROGRAM_ID, //this is in env
-        this.programId,
-        this.myMint, //gari
-        publicKeyOnWeb3, //owner
-      );
+      const associatedAddress_Of_PublicKeyOnWeb3 =
+        await Token.getAssociatedTokenAddress(
+          this.ASSOCIATED_TOKEN_PROGRAM_ID, //this is in env
+          this.programId,
+          this.myMint, //gari
+          publicKeyOnWeb3, //owner
+        );
       return associatedAddress_Of_PublicKeyOnWeb3;
     } catch (error) {
-      console.log("error in getAssociatedAccount in SDK backend walletservice", error);
+      console.log(
+        'error in getAssociatedAccount in SDK backend walletservice',
+        error,
+      );
       throw error;
     }
   }
@@ -145,8 +146,8 @@ export class WalletService {
     await queryRunner.startTransaction();
 
     try {
-   await this.wallet.update(
-        { publicKey :  receiverPublicKey},
+      await this.wallet.update(
+        { publicKey: receiverPublicKey },
         { tokenAssociatedAccount: receiverAssociatedAccount.toString() },
       );
 
@@ -158,7 +159,7 @@ export class WalletService {
       await queryRunner.release();
     }
   }
-  
+
   async updateWallet(userId, account, amount) {
     const connection = getConnection();
     const queryRunner = connection.createQueryRunner();
@@ -166,7 +167,7 @@ export class WalletService {
     await queryRunner.startTransaction();
 
     try {
-   await this.wallet.update(
+      await this.wallet.update(
         { userId },
         { tokenAssociatedAccount: account.toString() },
       );
@@ -237,8 +238,8 @@ export class WalletService {
     return this.wallet.findOne(filter);
   }
 
-  findPubkey(publicKey){
-    return this.wallet.findOne( {publicKey} );
+  findPubkey(publicKey) {
+    return this.wallet.findOne({ publicKey });
   }
 
   async getEncodedTransaction(
@@ -247,93 +248,95 @@ export class WalletService {
     receiverPubKey,
     receiverTokenAssociatedAccount,
     coins,
-    isAssociatedAccount
-) {
-  // amount is referred as coins in this function
+    isAssociatedAccount,
+  ) {
+    // amount is referred as coins in this function
 
-  // if reciever has no tokenAssociatedAccount, then it creates its tokenAssociatedAccount
-  const receiverPublicKey = new web3.PublicKey(receiverPubKey);
-  const instructions = [];
-  if(!isAssociatedAccount)
-  {
+    // if reciever has no tokenAssociatedAccount, then it creates its tokenAssociatedAccount
+    const receiverPublicKey = new web3.PublicKey(receiverPubKey);
+    const instructions = [];
+    if (!isAssociatedAccount) {
+      instructions.push(
+        Token.createAssociatedTokenAccountInstruction(
+          this.ASSOCIATED_TOKEN_PROGRAM_ID,
+          this.programId,
+          this.myMint,
+          receiverTokenAssociatedAccount,
+          receiverPublicKey,
+          this.chingariWallet.publicKey,
+        ),
+      );
+      // senderPublicKey missing
+    }
+
+    // create transaction instruction.
     instructions.push(
-      Token.createAssociatedTokenAccountInstruction(
-        this.ASSOCIATED_TOKEN_PROGRAM_ID,
+      Token.createTransferInstruction(
         this.programId,
-        this.myMint,
-        receiverTokenAssociatedAccount,
-        receiverPublicKey,
-        this.chingariWallet.publicKey,
+        new web3.PublicKey(senderTokenAssociatedAccount),
+        new web3.PublicKey(receiverTokenAssociatedAccount),
+        new web3.PublicKey(senderPublicKey),
+        [],
+        coins,
       ),
     );
-    // senderPublicKey missing
+
+    // add feepayer and recent blockhash obj
+    const transaction = new web3.Transaction({
+      feePayer: new web3.PublicKey(process.env.AIRDROP_FEEPAYER_PUBLIC_KEY),
+    }).add(...instructions);
+
+    //  console.log('transaction',transaction)
+    let blockhashObj = await this.connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhashObj.blockhash;
+
+    let encodedTransaction = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false,
+    });
+
+    // convert it in string
+    return encodedTransaction.toString('base64');
   }
 
-  // create transaction instruction.
-  instructions.push(
-    Token.createTransferInstruction(
-      this.programId,
-      new web3.PublicKey(senderTokenAssociatedAccount),
-      new web3.PublicKey(receiverTokenAssociatedAccount),
-      new web3.PublicKey(senderPublicKey),
-      [],
-      coins,
-    ),
-  );
-
-  // add feepayer and recent blockhash obj 
-  const transaction = new web3.Transaction({
-    feePayer: new web3.PublicKey(process.env.AIRDROP_FEEPAYER_PUBLIC_KEY),
-  }).add(...instructions);
-
-  //  console.log('transaction',transaction)
-  let blockhashObj = await this.connection.getLatestBlockhash();
-  transaction.recentBlockhash = blockhashObj.blockhash;
-
-  let encodedTransaction = transaction.serialize({
-    requireAllSignatures: false,
-    verifySignatures: false,
-  });
-
-  // convert it in string
-  return encodedTransaction.toString('base64');
-}
-  
-   find(req) {
+  find(req) {
     return this.wallet.find(req);
   }
-  
-  async startTransaction(data: any,senderWalletId:string) {
+
+  async startTransaction(data: any, senderWalletId: string) {
     const connection = getConnection();
     const queryRunner = connection.createQueryRunner();
     // establish real database connection using our new query runner
     await queryRunner.connect();
     await queryRunner.startTransaction();
-    
-    let coinsToBeDeducted = data.coins + data.chinagriCommission;
-      if(senderWalletId){
 
+    try {
+      let coinsToBeDeducted = data.coins + data.chinagriCommission;
+      if (senderWalletId) {
         let balanceupdate = await queryRunner.manager.decrement(
           Wallet,
           { id: senderWalletId, balance: MoreThanOrEqual(coinsToBeDeducted) },
           'balance',
           coinsToBeDeducted,
         );
-        
+
         if (balanceupdate.affected == 0) {
           throw new Error('Insufficient balance');
         }
       }
-
-    const TransactionData = await queryRunner.manager.save(
-      Transaction,
-      {
+      console.log('data 1', data);
+      const TransactionData = await queryRunner.manager.save(Transaction, {
         ...data,
-      },
-    );
+      });
 
-    await queryRunner.commitTransaction();
-    return TransactionData;
+      await queryRunner.commitTransaction();
+      return TransactionData; // rollback forget 
+    } catch (error) {
+      console.log(
+        'error in wallet service in saving draft transaction ',
+        error,
+      );
+    }
   }
 
   getAllTransctionInfo(endcodedTransction: String) {
@@ -356,7 +359,7 @@ export class WalletService {
     //     message: 'after  sendrawTransaction',
     //   }),
     // );
-    console.log("signature",signature)
+    console.log('signature', signature);
     return signature;
   }
 
@@ -364,11 +367,9 @@ export class WalletService {
     return this.transactions.findOne(request);
   }
 
-  async findTransctions(request) 
-  {
+  async findTransctions(request) {
     return this.transactions.findAndCount(request);
   }
-
 
   async deleteAndUpdateWalletbalance(
     pendingTransactionId,
@@ -383,7 +384,7 @@ export class WalletService {
     await queryRunner.startTransaction();
     try {
       // todo: add status == draft in below query:done
-      if(walletId){
+      if (walletId) {
         // add again senders decremented balance and save
         await queryRunner.manager.increment(
           Wallet,
@@ -392,7 +393,7 @@ export class WalletService {
           coinsToAdd,
         );
       }
-      
+
       // delete draft transaction row from transaction table since transaction failed
       await queryRunner.manager.delete(Transaction, {
         id: pendingTransactionId,

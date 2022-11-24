@@ -9,10 +9,10 @@ const constantsInfo = {
   PORT: process.env.PORT,
 };
 
-(function () {
-  Object.entries(constantsInfo).forEach((ent: any) => {
-    if (!ent[1] || (ent[1] && ent[1].toString().trim() === ''))
-      throw new Error('Please provide proper env variables');
-  });
-})();
+// (function () {
+//   Object.entries(constantsInfo).forEach((ent: any) => {
+//     if (!ent[1] || (ent[1] && ent[1].toString().trim() === ''))
+//       throw new Error('Please provide proper env variables');
+//   });
+// })();
 export default constantsInfo;

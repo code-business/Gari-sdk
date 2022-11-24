@@ -4,6 +4,16 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateCol
 export class Transaction {
     @PrimaryGeneratedColumn('uuid')
     id: string;
+
+    @Column({
+      nullable: false,
+    })
+    clientId: string;
+  
+    @Column({
+      nullable: false,
+    })
+    appName: string;
   
     @Column({ nullable: false })
     fromUserId: string;
@@ -15,8 +25,8 @@ export class Transaction {
     status: string;
 
     @Column({
-        nullable: true,
-      })
+      nullable: true,
+    })
     case: string;
 
     @Column({ nullable: false })
@@ -27,9 +37,6 @@ export class Transaction {
     
     @Column({ nullable: true })
     signature: string;
-
-    // @Column({ nullable: true })
-    // totalTransactionAmount:string
   
     @CreateDateColumn({
       type: 'timestamptz',
@@ -44,14 +51,14 @@ export class Transaction {
     })
     updated_at: Date;
 
-    // @Column({ default: 0, type: 'bigint' })
-    // chinagriCommission: string;
+    @Column({ default: 0, type: 'bigint' })
+    chinagriCommission: string;
   
     // @Column({ default: 0, type: 'bigint' })
     // coins: string;
   
-    // @Column({ default: 0, type: 'bigint' })
-    // solanaFeeInLamports: string;
+    @Column({ default: 0, type: 'bigint' })
+    solanaFeeInLamports: string;
   
     @Column({ default: 0, type: 'bigint' })
     totalTransactionAmount: string;
