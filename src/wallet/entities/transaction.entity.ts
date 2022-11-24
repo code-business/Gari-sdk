@@ -4,6 +4,16 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateCol
 export class Transaction {
     @PrimaryGeneratedColumn('uuid')
     id: string;
+
+    @Column({
+      nullable: false,
+    })
+    clientId: string;
+  
+    @Column({
+      nullable: false,
+    })
+    appName: string;
   
     @Column({ nullable: false })
     fromUserId: string;
@@ -27,9 +37,6 @@ export class Transaction {
     
     @Column({ nullable: true }) // nullable : false missing
     signature: string;
-
-    @Column({ type: 'jsonb', nullable: true, default: {} })
-    meta: object;
   
     @CreateDateColumn({
       type: 'timestamptz',
@@ -44,8 +51,8 @@ export class Transaction {
     })
     updated_at: Date;
 
-    // @Column({ default: 0, type: 'bigint' })
-    // chinagriCommission: string;
+    @Column({ default: 0, type: 'bigint' })
+    chinagriCommission: string;
   
     // @Column({ default: 0, type: 'bigint' })
     // coins: string;
@@ -56,13 +63,4 @@ export class Transaction {
     @Column({ default: 0, type: 'bigint' })
     totalTransactionAmount: string;
 
-    @Column({
-      nullable: false,
-    })
-    clientId: string;
-  
-    @Column({
-      nullable: false,
-    })
-    appName: string;
 }

@@ -16,22 +16,9 @@ import { GetTransctionByUser } from './dto/getTransaction.dto';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { SolanaService } from './solana/solana.service';
-import {
-  ETransactionCase,
-  ETransactionStatus,
-} from 'src/common/enum/status.enum';
-import {
-  ConnectAppWalletDto,
-  DecodedTransactions,
-  deleteAndUpdateWalletData,
-  EncodedTransactionDTO,
-  GetRecWalletDetailsDto,
-  GetWalletDetailsDto,
-  SaveTransactionData,
-  SendAirdrop,
-  UpdateTransaction,
-} from './dto/AppWallet.dto';
-import { keyBy, filter, get } from 'lodash';
+import { ETransactionCase, ETransactionStatus } from 'src/common/enum/status.enum';
+import { DecodedTransactions, EncodedTransactionDTO, GetRecWalletDetailsDto, SendAirdropDto } from './dto/AppWallet.dto';
+import { filter, get } from 'lodash';
 import { amountFromBuffer } from 'src/util/amountTobuffer';
 const jwt = require('jsonwebtoken');
 
@@ -108,28 +95,43 @@ export class WalletController {
   @ApiOperation({
     summary: 'send the airdrop to  receiver public key',
   })
-  async sendAirdrop(@Headers() header, @Body() sendAirdrop: SendAirdrop) {
-    // extract userId
-    const token = header.token;
+  async sendAirdrop(@Headers() headers, @Body() body: SendAirdropDto) {
+    try {
+    // extract userid   
+    const token = headers.token;
     const decoded = jwt.decode(token, { complete: true });
     const userId = decoded.payload.uid;
+    console.log("headers ", headers);
 
-    // receivers publickey and airdrop amount from sendAirdrop body
-    const { publicKey, airdropAmount } = sendAirdrop;
-    // const { airdropAmount } = sendAirdrop;
-
+    // publickey and airdropAmount 
+    const { publicKey, airdropAmount } = body;
     const associatedAccount = await this.walletService.getAssociatedAccount(
       publicKey,
     );
     const accountInfo: any = await this.walletService.getAccountInfo(
       associatedAccount.toString(),
     );
-
     let isAssociatedAccount = true;
 
     if (!accountInfo.value) {
       isAssociatedAccount = false;
     }
+
+    // before doing actual transaction save as a draft in transaction table
+    let draftData: any = {
+      status: ETransactionStatus.DRAFT,
+      case: ETransactionCase.AIRDROP,
+      coins: airdropAmount,
+      totalTransactionAmount: airdropAmount,
+      fromPublicKey: process.env.GARI_PUBLIC_KEY,
+      toPublicKey : publicKey,
+      fromUserId: 'chingari',
+      toUserId: userId,
+      chinagriCommission: 0, // will be dynamic
+      //clientId,
+      //appName // not required
+      // meta: memoDecrypt,
+    };
 
     const signature = await this.walletService.assocaiatedAccountTransaction(
       associatedAccount,
@@ -137,6 +139,7 @@ export class WalletController {
       isAssociatedAccount,
       airdropAmount,
     );
+
     if (signature) {
       await this.walletService.updateWallet(
         userId,
@@ -159,33 +162,31 @@ export class WalletController {
       };
     }
     
-
+  }
 
   @Post('getEncodedTransaction')
-  async getEncodedTransaction(
-    @Headers() header,
-    @Body() body: EncodedTransactionDTO,
-  ) {
-    try {
-      const { receiverPublicKey, amount } = body;
+  async getEncodedTransaction(@Headers() headers, @Body() body : EncodedTransactionDTO)
+  {
+    try
+    {
+      const { receiverPublicKey, amountToTransfer } = body;
 
-      // extract sender userid
-      const senderJwtToken = header.token;
-      const decoded = jwt.decode(senderJwtToken, { complete: true });
-      const userId = decoded.payload.uid;
+      // extract sender userid 
+      //const senderJwtToken = headers.token;
+      //const decoded = jwt.decode(senderJwtToken, { complete: true });
+      //const userId = decoded.payload.uid;
+      const userId = "54321";
 
       // fetch sender wallet details from SDK database
-      const senderWalletDetails = await this.walletService.findOne({ userId });
+      const senderWalletDetails = await this.walletService.findOne({userId}); // add another argument client id
       const senderPublicKey = senderWalletDetails.publicKey;
-      const senderTokenAssociatedAccount =
-        senderWalletDetails.tokenAssociatedAccount;
-
-      // if sender doesnt have sufficient amount to transfer then transaction cant happen
-      // todo : check for commission
-      // if(+senderWalletDetails.balance <= amount )
-      // {
-      //   throw new Error;
-      // }
+      const senderTokenAssociatedAccount = senderWalletDetails.tokenAssociatedAccount;
+      
+      //if sender doesnt have sufficient amount to transfer then transaction cant happen
+      if(+senderWalletDetails.balance <= amountToTransfer + (+process.env.CHINGARI_COMISSION) )
+      {
+        throw new Error;
+      }
 
       // fetch receiverTokenAssociatedAccount from web3 method
       let receiverTokenAssociatedAccount: any =
@@ -213,21 +214,23 @@ export class WalletController {
         senderTokenAssociatedAccount,
         receiverPublicKey,
         receiverTokenAssociatedAccount,
-        amount,
-        isAssociatedAccountOfReceiver,
-      );
-
-      console.log(
-        'enocdedTransaction send to sdk frontend',
-        encodedTransaction,
+        amountToTransfer,
+        isAssociatedAccountOfReceiver
       );
       return encodedTransaction;
-    } catch (error) {
+    }
+    catch(error)
+    { 
       console.log('error in getEncodedTransaction api in SDK backend', error);
+      return {
+        code: 400,
+        error: error.message,
+        message: `Error`,
+      };
     }
   }
 
-  // only decodes if new tokenAssociatedAccount is created
+  // only decodes encoded transaction (i.e starts actual transaction )
   @Post('startTransactions')
   async startTransactions(
     @Headers() header,
@@ -240,13 +243,14 @@ export class WalletController {
       const token = header.token;
       const decoded = jwt.decode(token, { complete: true });
       const userId = decoded.payload.uid;
-
-      // decodedTransaction just returns instructions containing all information about transactions
-      const decodedTransction =
-        this.walletService.getAllTransctionInfo(encodedTransaction);
+      const appName = decoded.payload.appName;
+      const clientId = header.gariclientid;
+    
+      // getAllTransctionInfo just converts buffered encodedTransaction i.e returns all information about transactions
+      const decodedTransction = this.walletService.getAllTransctionInfo(encodedTransaction);
 
       // fetch sender wallet details from SDK databse
-      const senderWallet = await this.walletService.find({ userId });
+      const senderWallet = await this.walletService.find({ userId});
 
       const instructionIndex = decodedTransction.instructions.length > 1 ? 1 : 0;
 
@@ -323,11 +327,6 @@ export class WalletController {
         throw new Error('Amount is required.');
       }
 
-      // const memoDecrypt = JSON.parse(decryptTextAES(memo.toString()));
-      // if (get(memoDecrypt, 'type', undefined) != 'nft_reward_transfer') {
-      //   throw new Error('Invalid transactions');
-      // }
-      // console.log('memoDecrypt', memoDecrypt);
       let transaction: any = {
         status: ETransactionStatus.DRAFT,
         case: ETransactionCase.TRANSACTION,
@@ -338,6 +337,8 @@ export class WalletController {
         fromUserId: userId,
         toUserId: walletData[0].userId,
         chinagriCommission: 0, // will be dynamic
+        clientId,
+        appName // not required
         // meta: memoDecrypt,
       };
       console.log('transaction', transaction);
@@ -345,10 +346,8 @@ export class WalletController {
 
       // draft transaction
       // after getting transaction signature status will be updated to pending
-      const draftTransactionData = await this.walletService.startTransaction(
-        transaction,
-        senderWallet[0].id,
-      );
+      const draftTransactionData = await this.walletService.startTransaction(transaction, senderWallet[0].id);
+      // cron job add
       const signature = await this.walletService
         .sendTransaction(decodedTransction)
         .catch(async (error) => {

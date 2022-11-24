@@ -26,7 +26,7 @@ export class RegisterAppWalletDto {
   packageName: String;
 }
 
-export class SendAirdrop {
+export class SendAirdropDto {
   @IsNotEmpty()
   @ApiProperty({
     required: true,
@@ -38,10 +38,10 @@ export class SendAirdrop {
   @IsNotEmpty()
   @ApiProperty({
     required: true,
-    description: 'airdrop amount decided by chingari client for giving reward to its users',
+    description: 'airdrop by gari-client to its users',
     example: 1,
   })
-  airdropAmount: number;
+  airdropAmount: string;
 }
 
 export class EncodedTransactionDTO {
@@ -57,7 +57,7 @@ export class EncodedTransactionDTO {
     example: '100000',
     required: false,
   })
-  amount: number;
+  amountToTransfer: number;
 }
 export class DecodedTransactions {
   @IsNotEmpty()
