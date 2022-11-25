@@ -101,7 +101,6 @@ export class WalletController {
     const token = headers.token;
     const decoded = jwt.decode(token, { complete: true });
     const userId = decoded.payload.uid;
-    console.log("headers ", headers);
 
     // publickey and airdropAmount 
     const { publicKey, airdropAmount } = body;
@@ -172,10 +171,9 @@ export class WalletController {
       const { receiverPublicKey, amountToTransfer } = body;
 
       // extract sender userid 
-      //const senderJwtToken = headers.token;
-      //const decoded = jwt.decode(senderJwtToken, { complete: true });
-      //const userId = decoded.payload.uid;
-      const userId = "54321";
+      const senderJwtToken = headers.token;
+      const decoded = jwt.decode(senderJwtToken, { complete: true });
+      const userId = decoded.payload.uid;
 
       // fetch sender wallet details from SDK database
       const senderWalletDetails = await this.walletService.findOne({userId}); // add another argument client id
@@ -418,36 +416,6 @@ export class WalletController {
         error: error.message,
         userExist: false,
         message: 'User Not Found',
-      };
-    }
-  }
-
-  @Post('getRecWalletDetails')
-  async getReceiverWalletDetails(@Body() body: GetRecWalletDetailsDto) {
-    const { publicKey } = body;
-    try {
-      if (publicKey != undefined) {
-        const wallet = await this.walletService.findPubkey(publicKey);
-        if (!wallet) {
-          return {
-            code: 200,
-            error: null,
-            message: 'PublicKey Not Found',
-          };
-        } else {
-          return {
-            code: 200,
-            error: null,
-            message: 'Success',
-            data: wallet,
-          };
-        }
-      }
-    } catch (error) {
-      return {
-        code: 400,
-        error: error.message,
-        message: 'Error',
       };
     }
   }
