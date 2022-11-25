@@ -63,7 +63,7 @@ export class WalletService {
     );
   }
 
-   createWallet(wallet) {
+   saveRegisterWalleteData(wallet) {
   return this.registerWalletRepository.save(wallet);
   }
 
@@ -73,28 +73,8 @@ export class WalletService {
   }
 
   // saves walletData into SDK database using queryRunner
-  async saveOnlyWalletData(walletData) {
-    // get queryRunner connection
-    const connection = getConnection();
-    const queryRunner = connection.createQueryRunner();
-
-    // establish real database connection using our new query runner
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    let queryWalletData;
-    try {
-      queryWalletData = await queryRunner.manager.save(Wallet, {
-        ...walletData,
-      });
-      await queryRunner.commitTransaction();
-    } catch (error) {
-      console.log('error in walletService in saveonlywalletdata function ');
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
-    return queryWalletData;
+  async saveWalletData(walletData) {
+  return this.wallet.save(walletData);
   }
 
   async deleteWallet(request) {

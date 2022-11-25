@@ -37,7 +37,7 @@ export class WalletController {
         ...registerAppWalletDto,
       };
 
-      const wallet = await this.walletService.createWallet(data);
+      const wallet = await this.walletService.saveRegisterWalleteData(data);
       return {
         code: 200,
         error: null,
@@ -75,7 +75,7 @@ export class WalletController {
         balance: 0,
       };
 
-      const newWalletData = await this.walletService.saveOnlyWalletData(
+      const newWalletData = await this.walletService.saveWalletData(
         walletData,
       );
       // return newWalletData;
