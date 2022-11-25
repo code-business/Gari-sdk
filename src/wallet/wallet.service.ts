@@ -63,11 +63,8 @@ export class WalletService {
     );
   }
 
-  async createWallet(wallet) {
-    let data = await this.wallet.save({
-      ...wallet,
-    });
-    return data;
+   createWallet(wallet) {
+  return this.registerWalletRepository.save(wallet);
   }
 
   async connectWallet(wallet) {

@@ -4,6 +4,7 @@ import {
     PrimaryGeneratedColumn,
     CreateDateColumn,
     UpdateDateColumn,
+    Generated,
   } from 'typeorm';
   
   @Entity()
@@ -15,6 +16,7 @@ import {
       unique: true,
       nullable: false,
     })
+    @Generated('uuid')
     clientId: string;
   
     @Column({
